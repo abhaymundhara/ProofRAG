@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--base-url", type=str, default="http://localhost:11434", help="Ollama base URL")
     parser.add_argument("--limit", type=int, help="Limit number of examples")
     parser.add_argument("--respect-sufficiency", type=bool, default=True, help="Abstain if sufficiency fails")
+    parser.add_argument("--ollama-endpoint-mode", type=str, choices=["chat", "generate"], default="chat", help="Ollama API endpoint")
 
     args = parser.parse_args()
 
@@ -34,10 +35,11 @@ def main():
     if args.limit:
         items = items[:args.limit]
 
-    print(f"Initializing Ollama generator with model {args.model}...")
+    print(f"Initializing Ollama generator with model {args.model} (mode={args.ollama_endpoint_mode})...")
     generator = OllamaGenerator(
         model=args.model,
-        base_url=args.base_url
+        base_url=args.base_url,
+        endpoint_mode=args.ollama_endpoint_mode
     )
 
     results = []
@@ -48,24 +50,13 @@ def main():
         for item in items:
             print(f"Processing query {item.id}...")
             
-            # 1. ProofRAG Pipeline
-            adapter_res = adapter.process_item(item)
-            report = adapter_res["sufficiency_report"]
-            packed_prompt = adapter_res["packed_prompt_preview"].replace("...", "") # Simple cleanup if preview was used
-            
-            # Note: MiniRAGOutputAdapter.process_item returns a preview. 
-            # For a real run we should probably have a method that returns the full prompt.
-            # Let's fix adapter later if needed, but for now I'll just re-pack if I can.
-            
-            # Actually, I'll just re-pack here to be sure I have the full prompt.
-            # I need the ledger and contract.
+            # ... (re-packing logic remains same)
             
             from proofrag.contracts.schema import EvidenceSlot, EvidenceContract
             from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
             from proofrag.packing.strict_context import StrictContextPacker
             from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
             
-            # Re-creating what adapter does internally but keeping full prompt
             slots = [
                 EvidenceSlot(slot_id="who_asked", description="The person who initiated the request", evidence_type="actor", required=True),
                 EvidenceSlot(slot_id="topic_context", description="Context about the topic", evidence_type="context", required=True)
@@ -85,11 +76,16 @@ def main():
             full_prompt = StrictContextPacker().pack(item.question, contract, ledger, report_obj)
 
             model_called = False
+            proofrag_answer = ""
+            thinking = None
+            
             if args.respect_sufficiency and not report_obj.answer_allowed:
                 proofrag_answer = "ABSTAINED: insufficient evidence"
             else:
                 try:
-                    proofrag_answer = generator.generate(full_prompt)
+                    res_meta = generator.generate_with_metadata(full_prompt)
+                    proofrag_answer = res_meta["content"]
+                    thinking = res_meta["thinking"]
                     model_called = True
                 except Exception as e:
                     print(f"Error calling model for {item.id}: {e}")
@@ -104,6 +100,7 @@ def main():
                 "answer_allowed": report_obj.answer_allowed,
                 "model_called": model_called,
                 "proofrag_generated_answer": proofrag_answer,
+                "model_thinking_present": thinking is not None,
                 "contains_gold_answer": contains_gold_answer(proofrag_answer, item.gold_answer) if model_called else False,
                 "coverage_score": report_obj.coverage_score,
                 "missing_required_slots": report_obj.missing_required_slots,

@@ -129,6 +129,9 @@ Run ProofRAG's evidence-gated verification over real or simulated MiniRAG export
   ```
 - **Analysis**: This runner applies ProofRAG's `StrictContextPacker` and `RuleBasedSufficiencyScorer` to external contexts, providing a behavioral analysis of where the baseline system may have succeeded or failed to meet evidence requirements.
 
+> [!TIP]
+> **Qwen 3.5** and other "thinking" models should use Ollama's **chat** mode (default) with `think=false`. Using the standard `generate` mode may result in empty visible responses if the model spends all tokens in the internal thinking field.
+
 ---
 
 ## Run with a real local model

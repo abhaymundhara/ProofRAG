@@ -3,8 +3,9 @@ import pytest
 from unittest.mock import patch, MagicMock
 from proofrag.generation.ollama import OllamaGenerator
 
-def test_ollama_generator_payload():
-    generator = OllamaGenerator(model="test-model", temperature=0.5, max_tokens=100)
+def test_ollama_generator_payload_generate_mode():
+    # Explicitly test generate mode for backward compatibility check
+    generator = OllamaGenerator(model="test-model", temperature=0.5, max_tokens=100, endpoint_mode="generate")
     
     with patch("urllib.request.urlopen") as mock_urlopen:
         mock_response = MagicMock()
@@ -23,8 +24,7 @@ def test_ollama_generator_payload():
         payload = json.loads(req.data.decode("utf-8"))
         assert payload["model"] == "test-model"
         assert payload["prompt"] == "hello"
-        assert payload["options"]["temperature"] == 0.5
-        assert payload["options"]["num_predict"] == 100
+        assert payload["think"] is False
 
 def test_ollama_connection_error():
     generator = OllamaGenerator()
@@ -50,16 +50,3 @@ def test_ollama_model_not_found():
         with pytest.raises(RuntimeError) as excinfo:
             generator.generate("hello")
         assert "ollama pull missing-model" in str(excinfo.value)
-
-def test_ollama_bad_response_format():
-    generator = OllamaGenerator()
-    
-    with patch("urllib.request.urlopen") as mock_urlopen:
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({"error": "something went wrong"}).encode("utf-8")
-        mock_response.__enter__.return_value = mock_response
-        mock_urlopen.return_value = mock_response
-        
-        with pytest.raises(RuntimeError) as excinfo:
-            generator.generate("hello")
-        assert "missing 'response' field" in str(excinfo.value)

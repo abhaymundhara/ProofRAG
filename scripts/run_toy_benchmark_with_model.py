@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--respect-sufficiency", type=bool, default=True, help="Abstain if sufficiency fails")
     parser.add_argument("--max-tokens", type=int, default=256, help="Max tokens to generate")
     parser.add_argument("--temperature", type=float, default=0.0, help="Generation temperature")
+    parser.add_argument("--ollama-endpoint-mode", type=str, choices=["chat", "generate"], default="chat", help="Ollama API endpoint")
 
     args = parser.parse_args()
 
@@ -32,13 +33,14 @@ def main():
     if args.limit:
         examples = examples[:args.limit]
 
-    print(f"Running toy benchmark with model {args.model}...")
+    print(f"Running toy benchmark with model {args.model} (mode={args.ollama_endpoint_mode})...")
     
     generator = OllamaGenerator(
         model=args.model,
         base_url=args.base_url,
         temperature=args.temperature,
-        max_tokens=args.max_tokens
+        max_tokens=args.max_tokens,
+        endpoint_mode=args.ollama_endpoint_mode
     )
     scorer = RuleBasedSufficiencyScorer()
     packer = StrictContextPacker()
@@ -57,11 +59,18 @@ def main():
             packed_prompt = packer.pack(ex.question, ex.contract, ledger, report)
             
             model_called = False
+            generated_answer = ""
+            thinking = None
+            done_reason = None
+            
             if args.respect_sufficiency and not report.answer_allowed:
                 generated_answer = "ABSTAINED: insufficient evidence"
             else:
                 try:
-                    generated_answer = generator.generate(packed_prompt)
+                    res_meta = generator.generate_with_metadata(packed_prompt)
+                    generated_answer = res_meta["content"]
+                    thinking = res_meta["thinking"]
+                    done_reason = res_meta["raw"].get("done_reason")
                     model_called = True
                 except Exception as e:
                     print(f"Error calling model for {ex.id}: {e}")
@@ -83,6 +92,9 @@ def main():
                 "model": args.model,
                 "model_called": model_called,
                 "generated_answer": generated_answer,
+                "model_thinking_present": thinking is not None,
+                "model_thinking_preview": thinking[:200] + "..." if thinking else None,
+                "raw_response_done_reason": done_reason,
                 "contains_gold_answer": is_correct,
                 "correct_when_answered": correct_when_answered,
                 "coverage_score": report.coverage_score,
