@@ -127,7 +127,20 @@ This experiment runner evaluates ProofRAG's behavioral logic over contexts retri
 - **Limitation**: The current support-slot inference is based on keyword/regex heuristics. Final benchmarks will require manual or LLM-based evidence labeling.
 - **Next Milestone**: Real MiniRAG execution on a tiny subset to generate actual graph-retrieved contexts.
 
-## H. Next Implementation Tasks
+## H. Tiny Smoke Test Plan
+
+To validate the integration without incurring heavy indexing costs, we use a 2-query smoke test.
+
+- **QA File**: `../external/MiniRAG/dataset/LiHua-World/qa/query_set.csv` (Verified present).
+- **Tool**: `tools/external/prepare_minirag_tiny_subset.py`.
+- **Expected Output**:
+    - `experiments/results/minirag_tiny_qa_subset.csv` (2 rows).
+    - `experiments/results/minirag_tiny_export_dryrun.jsonl` (ProofRAG-compatible JSONL).
+    - `experiments/results/proofrag_over_minirag_tiny_dryrun.jsonl` (Final behavioral metrics).
+- **Gating**: Real export requires MiniRAG indexing to have completed via `Step_0_index.py`. The dry-run bypasses this for logic verification.
+- **Complexity Focus**: Initial smoke testing focuses on `Single` hop questions. Multi-hop questions (which appear first in the real dataset) require more complex evidence contract generators which are planned for future versions.
+
+## I. Next Implementation Tasks
 
 1.  **Add toy benchmark harness**: Create a skeleton in `proofrag/benchmarks/` to handle JSONL result loading.
 2.  **Add MiniRAGOutputAdapter**: A utility to parse MiniRAG's CSV-in-Markdown context format.
