@@ -1,0 +1,38 @@
+[
+  {
+    "source_id": "doc-001",
+    "text": "LiHua contacted the support desk on Monday about her laptop warranty issue.",
+    "keywords": ["lihua", "laptop", "warranty", "support", "contacted"],
+    "supports_slots": ["warranty_context"]
+  },
+  {
+    "source_id": "doc-002",
+    "text": "Tom asked LiHua about the laptop warranty issue during the team meeting.",
+    "keywords": ["tom", "lihua", "laptop", "warranty", "asked", "team", "meeting"],
+    "supports_slots": ["who_asked", "warranty_context"]
+  },
+  {
+    "source_id": "doc-003",
+    "text": "The warranty for LiHua's laptop expires in December 2025.",
+    "keywords": ["warranty", "lihua", "laptop", "expires", "december", "2025"],
+    "supports_slots": ["warranty_context"]
+  },
+  {
+    "source_id": "doc-004",
+    "text": "Sarah mentioned that the laptop warranty had already been voided.",
+    "keywords": ["sarah", "laptop", "warranty", "voided"],
+    "supports_slots": ["warranty_context"]
+  },
+  {
+    "source_id": "doc-005",
+    "text": "LiHua works in the IT department and handles hardware procurement.",
+    "keywords": ["lihua", "it", "department", "hardware", "procurement"],
+    "supports_slots": []
+  },
+  {
+    "source_id": "doc-006",
+    "text": "The meeting on Monday involved Tom, LiHua, and the support team lead.",
+    "keywords": ["meeting", "monday", "tom", "lihua", "support", "team"],
+    "supports_slots": ["who_asked"]
+  }
+]
