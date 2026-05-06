@@ -87,6 +87,20 @@ ProofRAG includes a toy benchmark harness to verify its evidence-gating behavior
 
 ---
 
+## MiniRAG Output Adapter
+
+ProofRAG can ingest and validate results exported from external RAG systems like MiniRAG.
+
+- **Purpose**: This adapter bridges external research baselines with ProofRAG's evidence-gated verification. It consumes a normalized JSONL export format.
+- **Evidence Inference**: The adapter uses heuristic rules to map raw retrieved context into `EvidenceRecord` objects with inferred slots and strength.
+- **Demo**: Run the adapter demo to see how ProofRAG gates a simulated MiniRAG run:
+  ```bash
+  python scripts/run_minirag_adapter_demo.py
+  ```
+- **Next Steps**: Future work involves a `minirag_exporter.py` script (external) that calls the actual MiniRAG library with `only_need_context=True`.
+
+---
+
 ## Core Concepts
 
 | Concept | Description |
