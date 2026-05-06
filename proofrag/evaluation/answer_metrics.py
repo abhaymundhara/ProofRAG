@@ -71,6 +71,77 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
             
     return False
 
+def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: list[str] | None = None) -> bool:
+    """Checks if the generated answer is correct based on stricter rules than contains_gold_answer.
+    
+    Prevents:
+    - False positives from 'incomplete' or 'insufficient evidence' statements.
+    - False positives from mentioning source IDs that happen to contain the gold answer.
+    - Date matches that are part of larger tokens.
+    """
+    if not generated_answer or not gold_answer:
+        return False
+        
+    # 1. Block common 'incomplete' or 'insufficient' phrases
+    block_phrases = [
+        "answer is incomplete",
+        "insufficient evidence",
+        "cannot be confirmed",
+        "no specific date",
+        "not enough information",
+        "abstain",
+        "not mentioned",
+        "missing information"
+    ]
+    gen_lower = generated_answer.lower()
+    for phrase in block_phrases:
+        if phrase in gen_lower:
+            return False
+            
+    # 2. Clean the generated answer
+    clean_gen = clean_model_answer(generated_answer)
+    clean_gen = strip_citations(clean_gen)
+    
+    # 3. Strip source IDs from text to avoid false positives from mentions
+    if source_ids:
+        # Sort by length descending to avoid partial replacements
+        for sid in sorted(source_ids, key=len, reverse=True):
+            # Remove literal mentions of the ID and common variations
+            variations = [sid]
+            if ":" in sid:
+                variations.extend([sid.replace(":", "-"), sid.replace(":", "_"), sid.replace(":", "")])
+            
+            for v in variations:
+                escaped_v = re.escape(v)
+                # Remove "source ID 2026...", "record 2026...", or just "2026..."
+                clean_gen = re.sub(rf'\b(?:source|record|id)?\s*{escaped_v}\b', ' ', clean_gen, flags=re.I)
+
+    # 4. Normalized check
+    norm_gen = normalize_answer(clean_gen)
+    norm_gold = normalize_answer(gold_answer)
+    
+    if not norm_gold:
+        return False
+        
+    # Special handling for dates (e.g. 20260108) to ensure word boundary
+    if re.match(r'^\d{8}$', norm_gold):
+        if re.search(rf'\b{norm_gold}\b', clean_gen):
+            return True
+        return False
+
+    # Standard substring check on cleaned/normalized text
+    if norm_gold in norm_gen:
+        return True
+        
+    # Multi-part check
+    if " and " in gold_answer.lower():
+        parts = re.split(r'\s+and\s+', gold_answer, flags=re.IGNORECASE)
+        norm_parts = [normalize_answer(p) for p in parts if normalize_answer(p)]
+        if norm_parts and all(p in norm_gen for p in norm_parts):
+            return True
+            
+    return False
+
 def extract_entities_from_answer(text: str) -> Set[str]:
     """Simple heuristic to extract capitalized words (potential entities) from text."""
     clean_text = strip_citations(clean_model_answer(text))

@@ -127,23 +127,53 @@ This experiment runner evaluates ProofRAG's behavioral logic over contexts retri
 - **Limitation**: The current support-slot inference is based on keyword/regex heuristics. Final benchmarks will require manual or LLM-based evidence labeling.
 - **Next Milestone**: Real MiniRAG execution on a tiny subset to generate actual graph-retrieved contexts.
 
-## H. Tiny Smoke Test Plan
+## H. Tiny Smoke Test Plan (Real Dataset Alignment)
 
-To validate the integration without incurring heavy indexing costs, we use a 2-query smoke test.
+To validate the integration with the real LiHua-World schema without incurring heavy indexing costs, we use a 2-query smoke test on **Single-hop** questions.
 
-- **QA File**: `../external/MiniRAG/dataset/LiHua-World/qa/query_set.csv` (Verified present).
-- **Tool**: `tools/external/prepare_minirag_tiny_subset.py`.
-- **Expected Output**:
-    - `experiments/results/minirag_tiny_qa_subset.csv` (2 rows).
-    - `experiments/results/minirag_tiny_export_dryrun.jsonl` (ProofRAG-compatible JSONL).
-    - `experiments/results/proofrag_over_minirag_tiny_dryrun.jsonl` (Final behavioral metrics).
-- **Gating**: Real export requires MiniRAG indexing to have completed via `Step_0_index.py`. The dry-run bypasses this for logic verification.
-- **Complexity Focus**: Initial smoke testing focuses on `Single` hop questions. Multi-hop questions (which appear first in the real dataset) require more complex evidence contract generators which are planned for future versions.
+- **QA Subset**: `experiments/results/minirag_tiny_single_qa_subset.csv`.
+- **Primary Tool**: `scripts/run_minirag_single_smoke_with_model.py`.
+- **Logic**:
+    1. Export 2 Single-hop queries from the CSV into JSONL (Dry-run mode).
+    2. Run ProofRAG verification and generation using a local model (e.g., `qwen3.5:4b`).
+    3. Generate summary statistics (Abstention rate, Accuracy, etc.).
+- **Gating**: Real export requires MiniRAG indexing. The dry-run bypasses this to verify the ProofRAG-over-MiniRAG behavioral logic.
 
-## I. Next Implementation Tasks
+## I. Next Implementation Tasks (Completed)
 
-1.  **Add toy benchmark harness**: Create a skeleton in `proofrag/benchmarks/` to handle JSONL result loading.
-2.  **Add MiniRAGOutputAdapter**: A utility to parse MiniRAG's CSV-in-Markdown context format.
-3.  **Add command to import MiniRAG results**: `proofrag benchmarks import --method minirag --file results.jsonl`.
-4.  **Add ProofRAG-Pack over MiniRAG contexts**: Use ProofRAG's `StrictContextPacker` on contexts retrieved by MiniRAG to compare generation quality/hallucination rates.
-5.  **Add ablation table**: Generate a comparison table between MiniRAG-Native and ProofRAG-on-MiniRAG.
+1.  **MiniRAG Exporter Hardening**: Updated `tools/external/minirag_exporter.py` to support CSV input and specific LiHua-World ID schemas.
+2.  **Readiness Check**: Added `tools/external/check_minirag_ready.py` for environment verification.
+3.  **Real Model Smoke Test**: Added `scripts/run_minirag_single_smoke_with_model.py` to automate the dry-run pipeline with local models.
+
+## J. Operational Commands
+
+### 1. Check Integration Readiness
+```bash
+python tools/external/check_minirag_ready.py
+```
+
+### 2. Inspect Source Layout
+```bash
+python tools/external/inspect_lihua_data_layout.py
+```
+
+### 3. Resolve Tiny Source Corpus
+```bash
+python tools/external/resolve_lihua_sources.py --limit 2
+```
+
+### 4. Run Single-hop Smoke (Dry-run)
+```bash
+python scripts/run_minirag_single_smoke_with_model.py \
+  --model qwen3.5:4b \
+  --dry-run-minirag true
+```
+
+### 3. Manual Export for Custom Analysis
+```bash
+python tools/external/minirag_exporter.py \
+  --dry-run \
+  --qa-file experiments/results/minirag_tiny_single_qa_subset.csv \
+  --output experiments/results/minirag_tiny_single_export_dryrun.jsonl \
+  --limit 2
+```

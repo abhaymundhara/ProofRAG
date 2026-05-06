@@ -4,11 +4,10 @@ from pathlib import Path
 from typing import Any, Dict, List
 from pydantic import BaseModel
 
-from proofrag.contracts.schema import EvidenceContract, EvidenceSlot
+from proofrag.contracts.infer import infer_contract_from_question
 from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
 from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
 from proofrag.packing.strict_context import StrictContextPacker
-
 
 class MiniRAGExportItem(BaseModel):
     id: str
@@ -21,7 +20,6 @@ class MiniRAGExportItem(BaseModel):
     baseline_answer: str
     baseline_method: str
     baseline_metrics: Dict[str, Any]
-
 
 class MiniRAGOutputAdapter:
     """Adapts MiniRAG's exported results into ProofRAG's evidence framework."""
@@ -42,28 +40,74 @@ class MiniRAGOutputAdapter:
                     items.append(MiniRAGExportItem(**json.loads(line)))
         return items
 
-    def _infer_evidence(self, text: str, question: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def _infer_evidence(self, text: str, question: str, metadata: Dict[str, Any], source_id: str = "") -> Dict[str, Any]:
         """Simple rules to infer supports_slots and evidence_strength."""
         supports_slots = []
         contradicts = []
         evidence_strength = "background"
+        q_lower = question.lower()
+        t_lower = text.lower()
 
-        # Topic context: check for keywords from question
         # Simplified: if any word > 4 chars from question is in text
         q_keywords = [w.lower() for w in re.findall(r"\w+", question) if len(w) > 4]
-        if any(kw in text.lower() for kw in q_keywords):
-            supports_slots.append("topic_context")
-            evidence_strength = "indirect"
+        overlap = any(kw in t_lower for kw in q_keywords)
 
-        # who_asked: check for actor-action phrases
-        # Common names or pronouns followed by 'asked'
-        if re.search(r"\b(Tom|Sarah|LiHua|someone|he|she|they)\b\s+asked\b", text, re.I):
-            supports_slots.append("who_asked")
-            evidence_strength = "direct"
+        # 0. Handle dry-run placeholders (strictly background/empty)
+        if "dry-run placeholder context" in t_lower:
+            return {
+                "supports_slots": [],
+                "contradicts": [],
+                "evidence_strength": "background"
+            }
+
+        if "what time" in q_lower:
+            # Time patterns: 5:30 PM, 12:00, 5 PM
+            time_pattern = r"\b(?:\d{1,2}:\d{2}|\d{1,2})\s*(?:AM|PM)\b|\b\d{1,2}:\d{2}\b"
+            if re.search(time_pattern, text, re.I):
+                supports_slots.append("time_answer")
+                evidence_strength = "direct"
+            
+            # Event context: overlap and not conflicting
+            if overlap:
+                supports_slots.append("event_context")
+                if evidence_strength == "background":
+                    evidence_strength = "indirect"
+
+        elif "when" in q_lower:
+            # Date patterns or source_id prefix (e.g. 20260105_14:00)
+            date_pattern = r"202\d[0-1]\d[0-3]\d"
+            if re.search(date_pattern, text) or re.search(date_pattern, source_id):
+                supports_slots.append("date_or_time_answer")
+                evidence_strength = "direct"
+            
+            # Event context overlap (Strict: no lunch for dinner)
+            if overlap:
+                is_dinner_q = "dinner" in q_lower
+                is_lunch_t = "lunch" in t_lower
+                # If question has 'dinner' but text says 'lunch', it's NOT event context for dinner
+                if not (is_dinner_q and is_lunch_t):
+                    supports_slots.append("event_context")
+                    if evidence_strength == "background":
+                        evidence_strength = "indirect"
+
+        elif "who" in q_lower:
+            if overlap:
+                supports_slots.append("topic_context")
+                evidence_strength = "indirect"
+            
+            if re.search(r"\b(Tom|Sarah|LiHua|someone|he|she|they)\b\s+asked\b", text, re.I):
+                supports_slots.append("who_asked")
+                evidence_strength = "direct"
+        
+        else:
+            if overlap:
+                supports_slots.append("topic_context")
+                supports_slots.append("answer")
+                evidence_strength = "indirect"
         
         # Contradiction markers
-        if metadata.get("contradiction") is True or "no one asked" in text.lower():
-            if re.search(r"who\s+asked", question, re.I):
+        if metadata.get("contradiction") is True or "no one asked" in t_lower:
+            if "who" in q_lower:
                 contradicts.append("who_asked")
 
         return {
@@ -75,36 +119,20 @@ class MiniRAGOutputAdapter:
     def process_item(self, item: MiniRAGExportItem) -> Dict[str, Any]:
         """Converts a MiniRAG item into a ProofRAG sufficiency report and prompt."""
         
-        # 1. Build EvidenceContract
-        # For 'who asked' questions, we require who_asked and topic_context
-        slots = [
-            EvidenceSlot(
-                slot_id="who_asked",
-                description="The person who initiated the request or question",
-                evidence_type="actor",
-                required=True,
-                min_sources=1
-            ),
-            EvidenceSlot(
-                slot_id="topic_context",
-                description="Context about the topic being discussed",
-                evidence_type="context",
-                required=True,
-                min_sources=1
-            )
-        ]
-        contract = EvidenceContract(
-            question=item.question,
-            query_type=item.query_type,
-            slots=slots,
-            must_check_contradictions=True,
-            strict_mode=True
-        )
+        # 1. Build EvidenceContract using inference
+        contract = infer_contract_from_question(item.question)
+        contract.query_type = item.query_type # Preserve external type if provided
+        contract.strict_mode = True
 
         # 2. Build EvidenceRecords
         records = []
         for i, ctx in enumerate(item.retrieved_context):
-            inference = self._infer_evidence(ctx["text"], item.question, ctx.get("metadata", {}))
+            inference = self._infer_evidence(
+                ctx["text"], 
+                item.question, 
+                ctx.get("metadata", {}),
+                source_id=ctx.get("source_id", "")
+            )
             records.append(EvidenceRecord(
                 record_id=f"minirag-{item.id}-{i}",
                 source_id=ctx["source_id"],
@@ -112,7 +140,7 @@ class MiniRAGOutputAdapter:
                 supports_slots=inference["supports_slots"],
                 contradicts=inference["contradicts"],
                 evidence_strength=inference["evidence_strength"],
-                confidence=1.0  # Default for now
+                confidence=1.0
             ))
 
         # 3. Pipeline
@@ -134,5 +162,6 @@ class MiniRAGOutputAdapter:
             "gold_answer": item.gold_answer,
             "sufficiency_report": report.model_dump(),
             "evidence_records": [r.model_dump() for r in records],
+            "packed_prompt": packed_prompt,
             "packed_prompt_preview": packed_prompt[:500] + "..."
         }

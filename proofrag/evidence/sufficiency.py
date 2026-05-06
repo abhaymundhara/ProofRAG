@@ -32,6 +32,7 @@ class SufficiencyReport(BaseModel):
         covered_slots:          Slot IDs that are satisfied.
         missing_required_slots: Required slots with insufficient evidence.
         contradiction_count:    Number of records that contain contradictions.
+        contract_slot_ids:      All slot IDs defined in the contract.
         reason:                 Human-readable explanation of the decision.
     """
 
@@ -40,6 +41,7 @@ class SufficiencyReport(BaseModel):
     covered_slots: list[str]
     missing_required_slots: list[str]
     contradiction_count: int
+    contract_slot_ids: list[str]
     reason: str
 
 
@@ -133,5 +135,6 @@ class RuleBasedSufficiencyScorer:
             covered_slots=covered,
             missing_required_slots=missing,
             contradiction_count=contradiction_count,
+            contract_slot_ids=contract.slot_ids,
             reason=reason,
         )

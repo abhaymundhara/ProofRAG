@@ -8,7 +8,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 from proofrag.generation.ollama import OllamaGenerator
-from proofrag.evaluation.answer_metrics import contains_gold_answer, clean_model_answer
+from proofrag.evaluation.answer_metrics import contains_gold_answer, clean_model_answer, is_answer_correct
 
 
 def main():
@@ -50,37 +50,17 @@ def main():
         for item in items:
             print(f"Processing query {item.id}...")
             
-            # ... (re-packing logic remains same)
+            # Use adapter to process the item (handles contract inference and evidence mapping)
+            processed = adapter.process_item(item)
+            report_dict = processed["sufficiency_report"]
+            full_prompt = processed["packed_prompt"]
             
-            from proofrag.contracts.schema import EvidenceSlot, EvidenceContract
-            from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
-            from proofrag.packing.strict_context import StrictContextPacker
-            from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
-            
-            slots = [
-                EvidenceSlot(slot_id="who_asked", description="The person who initiated the request", evidence_type="actor", required=True),
-                EvidenceSlot(slot_id="topic_context", description="Context about the topic", evidence_type="context", required=True)
-            ]
-            contract = EvidenceContract(question=item.question, query_type=item.query_type, slots=slots, strict_mode=True)
-            
-            records = []
-            for i, ctx in enumerate(item.retrieved_context):
-                inf = adapter._infer_evidence(ctx["text"], item.question, ctx.get("metadata", {}))
-                records.append(EvidenceRecord(
-                    record_id=f"r-{i}", source_id=ctx["source_id"], text=ctx["text"],
-                    supports_slots=inf["supports_slots"], contradicts=inf["contradicts"],
-                    evidence_strength=inf["evidence_strength"], confidence=1.0
-                ))
-            ledger = EvidenceLedger(records=records)
-            report_obj = RuleBasedSufficiencyScorer().score(contract, ledger)
-            full_prompt = StrictContextPacker().pack(item.question, contract, ledger, report_obj)
-
             model_called = False
             raw_proofrag_answer = ""
             proofrag_answer = ""
             thinking = None
             
-            if args.respect_sufficiency and not report_obj.answer_allowed:
+            if args.respect_sufficiency and not report_dict["answer_allowed"]:
                 proofrag_answer = "ABSTAINED: insufficient evidence"
             else:
                 try:
@@ -99,15 +79,18 @@ def main():
                 "baseline_method": item.baseline_method,
                 "baseline_answer": item.baseline_answer,
                 "gold_answer": item.gold_answer,
-                "answer_allowed": report_obj.answer_allowed,
+                "answer_allowed": report_dict["answer_allowed"],
                 "model_called": model_called,
                 "raw_proofrag_generated_answer": raw_proofrag_answer,
                 "proofrag_generated_answer": proofrag_answer,
                 "model_thinking_present": thinking is not None,
-                "contains_gold_answer": contains_gold_answer(proofrag_answer, item.gold_answer) if model_called else False,
-                "coverage_score": report_obj.coverage_score,
-                "missing_required_slots": report_obj.missing_required_slots,
-                "contradiction_count": report_obj.contradiction_count
+                "contains_gold_answer_raw": contains_gold_answer(proofrag_answer, item.gold_answer) if model_called else False,
+                "correct_when_answered": is_answer_correct(proofrag_answer, item.gold_answer, source_ids=item.gold_supporting_sources) if model_called else False,
+                "coverage_score": report_dict["coverage_score"],
+                "missing_required_slots": report_dict["missing_required_slots"],
+                "contract_slot_ids": report_dict.get("contract_slot_ids", []),
+                "evidence_record_slots": [r["supports_slots"] for r in processed["evidence_records"]],
+                "contradiction_count": report_dict["contradiction_count"]
             }
             results.append(res)
             f.write(json.dumps(res) + "\n")

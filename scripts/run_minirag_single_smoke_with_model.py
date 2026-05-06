@@ -68,35 +68,16 @@ def main():
         for item in items:
             print(f"Processing query {item.id}...")
             
-            from proofrag.contracts.schema import EvidenceSlot, EvidenceContract
-            from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
-            from proofrag.packing.strict_context import StrictContextPacker
-            from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
+            # Use adapter to process the item (handles contract inference and evidence mapping)
+            processed = adapter.process_item(item)
+            report_dict = processed["sufficiency_report"]
+            full_prompt = processed["packed_prompt"]
             
-            # Use generic slots for smoke test
-            slots = [
-                EvidenceSlot(slot_id="who_asked", description="The person who initiated the request", evidence_type="actor", required=True),
-                EvidenceSlot(slot_id="topic_context", description="Context about the topic", evidence_type="context", required=True)
-            ]
-            contract = EvidenceContract(question=item.question, query_type=item.query_type, slots=slots, strict_mode=True)
-            
-            records = []
-            for i, ctx in enumerate(item.retrieved_context):
-                inf = adapter._infer_evidence(ctx["text"], item.question, ctx.get("metadata", {}))
-                records.append(EvidenceRecord(
-                    record_id=f"r-{i}", source_id=ctx["source_id"], text=ctx["text"],
-                    supports_slots=inf["supports_slots"], contradicts=inf["contradicts"],
-                    evidence_strength=inf["evidence_strength"], confidence=1.0
-                ))
-            ledger = EvidenceLedger(records=records)
-            report_obj = RuleBasedSufficiencyScorer().score(contract, ledger)
-            full_prompt = StrictContextPacker().pack(item.question, contract, ledger, report_obj)
-
             model_called = False
             raw_proofrag_answer = ""
             proofrag_answer = ""
             
-            if not report_obj.answer_allowed:
+            if not report_dict["answer_allowed"]:
                 proofrag_answer = "ABSTAINED: insufficient evidence"
             else:
                 try:
@@ -112,12 +93,14 @@ def main():
                 "id": item.id,
                 "question": item.question,
                 "gold_answer": item.gold_answer,
-                "answer_allowed": report_obj.answer_allowed,
+                "answer_allowed": report_dict["answer_allowed"],
                 "model_called": model_called,
                 "proofrag_generated_answer": proofrag_answer,
                 "contains_gold_answer": contains_gold_answer(proofrag_answer, item.gold_answer) if model_called else False,
-                "missing_evidence_blocks": len(report_obj.missing_required_slots),
-                "contradiction_blocks": report_obj.contradiction_count
+                "missing_evidence_blocks": len(report_dict["missing_required_slots"]),
+                "contradiction_blocks": report_dict["contradiction_count"],
+                "contract_slot_ids": report_dict.get("contract_slot_ids", []),
+                "evidence_record_slots": [r["supports_slots"] for r in processed["evidence_records"]]
             }
             results.append(res)
             f.write(json.dumps(res) + "\n")
