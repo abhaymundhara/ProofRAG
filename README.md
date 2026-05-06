@@ -178,6 +178,21 @@ python scripts/run_proofrag_over_minirag_with_model.py \
 
 ---
 
+## Current Toy Benchmark Result
+
+Initial evaluations using the toy benchmark dataset (`benchmarks/toy_lihua.jsonl`) show high precision for the ProofRAG evidence gate.
+
+| Model | Total | Abstained | Answered | Accuracy (when allowed) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Qwen 3.5 4B** | 6 | 4 | 2 | 100% |
+| **Gemma 4 e4b** | 6 | 4 | 2 | 100% |
+
+- **Safe Gating**: ProofRAG correctly abstained on 4/6 examples due to missing evidence or detected contradictions.
+- **Accuracy**: Both models achieved 100% accuracy on the examples where ProofRAG's evidence gate permitted an answer.
+- **Note**: This is a diagnostic toy benchmark (6 examples) designed to verify pipeline logic and is not a final research result on the full LiHua-World dataset.
+
+---
+
 ## Core Concepts
 
 | Concept | Description |

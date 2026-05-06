@@ -23,6 +23,24 @@ def strip_citations(text: str) -> str:
     text = re.sub(r'\((?:rec-\d+|record_id=[^)]+|\d+)\)', '', text)
     return text
 
+def clean_model_answer(text: str) -> str:
+    """Removes model-specific artifacts like 'thought' blocks and '<channel|>' tags."""
+    if not text:
+        return ""
+        
+    # 1. Handle <channel|> tags (common in Gemma/thinking models)
+    if "<channel|>" in text:
+        text = text.split("<channel|>")[-1]
+        
+    # 2. Handle 'thought\n' blocks
+    if text.startswith("thought\n"):
+        # If there's a clear separation after thought (e.g. double newline or some marker),
+        # but usually <channel|> handled it. If not, we look for common patterns.
+        # For now, if <channel|> wasn't there, we just strip the 'thought\n' prefix if it's the very start.
+        text = text[len("thought\n"):]
+
+    return text.strip()
+
 def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     """Checks if the normalized gold answer is contained within the normalized generated answer.
     Handles citation stripping and multi-part 'and' gold answers.
@@ -30,8 +48,11 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     if not gold_answer:
         return False
         
+    # clean_model_answer should have been called before this, but we'll be safe
+    gen_to_score = clean_model_answer(generated_answer)
+        
     # 1. Strip citations from generated answer
-    clean_gen = strip_citations(generated_answer)
+    clean_gen = strip_citations(gen_to_score)
     
     # 2. Normalize both
     norm_gen = normalize_answer(clean_gen)
@@ -52,7 +73,6 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
 
 def extract_entities_from_answer(text: str) -> Set[str]:
     """Simple heuristic to extract capitalized words (potential entities) from text."""
-    # This is a very basic implementation for now.
-    clean_text = strip_citations(text)
+    clean_text = strip_citations(clean_model_answer(text))
     entities = set(re.findall(r'\b[A-Z][a-z]+\b', clean_text))
     return entities

@@ -11,7 +11,7 @@ from proofrag.evidence.ledger import EvidenceLedger
 from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
 from proofrag.packing.strict_context import StrictContextPacker
 from proofrag.generation.ollama import OllamaGenerator
-from proofrag.evaluation.answer_metrics import contains_gold_answer
+from proofrag.evaluation.answer_metrics import contains_gold_answer, clean_model_answer
 
 
 def main():
@@ -59,6 +59,7 @@ def main():
             packed_prompt = packer.pack(ex.question, ex.contract, ledger, report)
             
             model_called = False
+            raw_generated_answer = ""
             generated_answer = ""
             thinking = None
             done_reason = None
@@ -68,7 +69,8 @@ def main():
             else:
                 try:
                     res_meta = generator.generate_with_metadata(packed_prompt)
-                    generated_answer = res_meta["content"]
+                    raw_generated_answer = res_meta["content"]
+                    generated_answer = clean_model_answer(raw_generated_answer)
                     thinking = res_meta["thinking"]
                     done_reason = res_meta["raw"].get("done_reason")
                     model_called = True
@@ -91,6 +93,7 @@ def main():
                 "answer_allowed": report.answer_allowed,
                 "model": args.model,
                 "model_called": model_called,
+                "raw_generated_answer": raw_generated_answer,
                 "generated_answer": generated_answer,
                 "model_thinking_present": thinking is not None,
                 "model_thinking_preview": thinking[:200] + "..." if thinking else None,
