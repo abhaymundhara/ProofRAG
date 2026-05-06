@@ -12,4 +12,11 @@ dist/
 venv/
 .env
 .DS_Store
-experiments/results/*.jsonl
+# Experiments and logs
+experiments/
+logs/
+*.log
+
+# External dependencies (not to be committed)
+external/
+# Note: External repositories should be cloned into ../external/ to avoid accidental commits.

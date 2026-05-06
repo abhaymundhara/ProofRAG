@@ -60,7 +60,30 @@ python -m proofrag.cli ask --question "Who asked LiHua about the laptop warranty
 
 # Run all tests
 pytest
+
+# Run the toy benchmark
+python scripts/run_toy_benchmark.py
 ```
+
+---
+
+## Toy Benchmark Harness
+
+ProofRAG includes a toy benchmark harness to verify its evidence-gating behavior against expected outcomes.
+
+- **What it tests**: 
+  - Direct vs. Indirect evidence enforcement.
+  - Required slot coverage.
+  - Multi-source requirements.
+  - Contradiction blocking in strict mode.
+- **How to run**:
+  ```bash
+  python scripts/run_toy_benchmark.py
+  ```
+- **Dataset**: `benchmarks/toy_lihua.jsonl` contains 6 curated scenarios based on the LiHua-World context.
+- **Results**: Detailed results are written to `experiments/results/toy_benchmark_results.jsonl`.
+
+*Note: This is a diagnostic tool for ProofRAG's internal logic. Integration with the full MiniRAG pipeline is the next milestone.*
 
 ---
 
@@ -81,6 +104,13 @@ pytest
 - **v0.2** — Real retrieval backends (dense vector, BM25)
 - **v0.3** — Real LLM generation integration (transformers, OpenAI, Ollama)
 - **v0.4** — Benchmarks vs MiniRAG / LightRAG on open QA datasets
+
+## External baselines
+
+ProofRAG is designed to be compared against state-of-the-art lightweight RAG systems.
+
+- **MiniRAG**: For inspection and reproduction, MiniRAG is cloned into `../external/MiniRAG`.
+- **Reproducibility**: MiniRAG source code and datasets are **not** vendored into this repository. ProofRAG interacts with external baselines through exported JSONL results and adapter layers (see `docs/minirag_adapter_plan.md`).
 
 ---
 
