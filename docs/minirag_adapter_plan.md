@@ -97,7 +97,16 @@ A new script (not committed to ProofRAG) will be used to:
 - **External Repo**: MiniRAG should remain external under `../external/MiniRAG` and never be committed to the ProofRAG repository.
 - **Indexing Subset**: Since full indexing may be slow, initial integration and testing should use a tiny subset of the data or a pre-existing indexed workspace.
 
-## F. Risks and Open Questions
+## F. Exporter Plan
+
+The `tools/external/minirag_exporter.py` script facilitates data transfer from MiniRAG to ProofRAG without vendoring code.
+
+- **Import Safety**: The script only attempts to import `minirag` inside the execution function, allowing `dry-run` and schema validation without having the external library installed.
+- **Context Capture**: It leverages MiniRAG's `only_need_context=True` parameter to extract internal graph-retrieved contexts.
+- **Fallback**: If retrieval fails or the parameter is unsupported, it exports an empty context list with metadata warnings, allowing ProofRAG to evaluate the "baseline answer" even if verification fails.
+- **Dry-Run Mode**: Supports a `--dry-run` flag to generate schema-valid dummy data for ProofRAG CI and adapter testing.
+
+## G. Risks and Open Questions
 
 - **Context Format**: MiniRAG returns context as a formatted CSV string (Entities, Relationships, Sources). ProofRAG will need a custom parser to convert this into `EvidenceRecord` objects if we want to "re-pack" it.
 - **Indexing Runtime**: Full indexing of LiHua-World takes time. We should use a subset for initial adapter testing.

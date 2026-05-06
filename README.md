@@ -101,6 +101,22 @@ ProofRAG can ingest and validate results exported from external RAG systems like
 
 ---
 
+## External MiniRAG Exporter
+
+An optional helper tool is provided to export real MiniRAG results for evaluation.
+
+- **Non-Vendoring**: This tool stays in `tools/external/` and does not include MiniRAG code.
+- **Dry-Run**: Test the schema without MiniRAG:
+  ```bash
+  python tools/external/minirag_exporter.py \
+    --qa-file benchmarks/toy_lihua.jsonl \
+    --output experiments/results/minirag_dry_run.jsonl \
+    --dry-run
+  ```
+- **Evaluation**: The exported JSONL can be loaded by `MiniRAGOutputAdapter` for ProofRAG verification.
+
+---
+
 ## Core Concepts
 
 | Concept | Description |
