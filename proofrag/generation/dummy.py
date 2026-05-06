@@ -7,14 +7,11 @@ real LLM call (e.g. via the transformers or openai client).
 
 from __future__ import annotations
 
+from .base import BaseGenerator
 
-class DummyGenerator:
-    """Placeholder generator that always returns a canned response.
 
-    Args:
-        placeholder: Override the default placeholder message.
-                     Useful for testing deterministic output.
-    """
+class DummyGenerator(BaseGenerator):
+    """A dummy generator that returns a fixed response for testing."""
 
     DEFAULT_RESPONSE = "Generated answer would go here."
 

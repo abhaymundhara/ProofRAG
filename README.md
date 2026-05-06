@@ -131,6 +131,50 @@ Run ProofRAG's evidence-gated verification over real or simulated MiniRAG export
 
 ---
 
+## Run with a real local model
+
+ProofRAG supports local model generation using [Ollama](https://ollama.com/). We prioritize lightweight models that can run on consumer hardware.
+
+### Setup
+1. Install Ollama and start the server (`ollama serve`).
+2. Pull the recommended models:
+   ```bash
+   ollama pull qwen3.5:4b
+   ollama pull gemma4:e4b
+   ```
+
+> [!NOTE]
+> We start with **Qwen 3.5 4B** (default) and **Gemma 4 e4b** (comparison) because ProofRAG targets small/local-model RAG. Larger models can be tested later, but the first benchmark should stay in the lightweight setting. Fallback models include `gemma3:4b` and `qwen3:4b`.
+
+### Run Toy Benchmark with Model
+Evaluate ProofRAG's performance using real LLM responses:
+```bash
+# Using default model (qwen3.5:4b)
+python scripts/run_toy_benchmark_with_model.py \
+  --dataset benchmarks/toy_lihua.jsonl \
+  --output experiments/results/toy_benchmark_model_qwen35_4b.jsonl \
+  --model qwen3.5:4b
+
+# Using comparison model (gemma4:e4b)
+python scripts/run_toy_benchmark_with_model.py \
+  --dataset benchmarks/toy_lihua.jsonl \
+  --output experiments/results/toy_benchmark_model_gemma4_e4b.jsonl \
+  --model gemma4:e4b
+```
+
+### Run Experiment over MiniRAG exports
+Compare ProofRAG-generated answers against baseline MiniRAG answers:
+```bash
+python scripts/run_proofrag_over_minirag_with_model.py \
+  --input benchmarks/sample_minirag_export.jsonl \
+  --output experiments/results/proofrag_over_minirag_model_results.jsonl \
+  --model qwen3.5:4b
+```
+
+*Note: By default, ProofRAG will **abstain** (return a fixed message without calling the model) if the evidence sufficiency check fails.*
+
+---
+
 ## Core Concepts
 
 | Concept | Description |
