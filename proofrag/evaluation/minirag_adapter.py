@@ -42,6 +42,7 @@ class MiniRAGOutputAdapter:
 
     def _infer_evidence(self, text: str, question: str, metadata: Dict[str, Any], source_id: str = "") -> Dict[str, Any]:
         """Simple rules to infer supports_slots and evidence_strength."""
+        text = text or ""
         supports_slots = []
         contradicts = []
         evidence_strength = "background"
@@ -80,15 +81,30 @@ class MiniRAGOutputAdapter:
                 supports_slots.append("date_or_time_answer")
                 evidence_strength = "direct"
             
-            # Event context overlap (Strict: no lunch for dinner)
+            # Event context overlap
             if overlap:
-                is_dinner_q = "dinner" in q_lower
-                is_lunch_t = "lunch" in t_lower
-                # If question has 'dinner' but text says 'lunch', it's NOT event context for dinner
-                if not (is_dinner_q and is_lunch_t):
+                # Handle meal/social-event language flexibly (lunch, dinner, cafe, etc.)
+                social_terms = {
+                    "lunch", "dinner", "café", "cafe", "food", "eating", "meet", 
+                    "seeing", "reminder", "plan", "appointment", "check-in", 
+                    "move-in", "visit", "breakfast", "supper", "meal"
+                }
+                q_social = any(w in q_lower for w in social_terms)
+                t_social = any(w in t_lower for w in social_terms)
+                
+                # If both have social terms, we allow cross-matching (e.g. lunch for dinner)
+                if q_social and t_social:
                     supports_slots.append("event_context")
                     if evidence_strength == "background":
                         evidence_strength = "indirect"
+                else:
+                    # Fallback to strict check for non-social overlap
+                    is_dinner_q = "dinner" in q_lower
+                    is_lunch_t = "lunch" in t_lower
+                    if not (is_dinner_q and is_lunch_t):
+                        supports_slots.append("event_context")
+                        if evidence_strength == "background":
+                            evidence_strength = "indirect"
 
         elif "who" in q_lower:
             if overlap:
@@ -136,7 +152,7 @@ class MiniRAGOutputAdapter:
             records.append(EvidenceRecord(
                 record_id=f"minirag-{item.id}-{i}",
                 source_id=ctx["source_id"],
-                text=ctx["text"],
+                text=ctx["text"] or "",
                 supports_slots=inference["supports_slots"],
                 contradicts=inference["contradicts"],
                 evidence_strength=inference["evidence_strength"],
