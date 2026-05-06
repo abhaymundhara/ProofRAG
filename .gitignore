@@ -18,6 +18,6 @@ logs/
 *.log
 
 # External dependencies (not to be committed)
-external/
+/external/
 # Note: External repositories should be cloned into ../external/ to avoid accidental commits.
 scratch/

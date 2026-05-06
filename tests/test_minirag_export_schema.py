@@ -16,6 +16,7 @@ def test_validate_good_row():
         "baseline_answer": "B",
         "baseline_method": "minirag",
         "baseline_metrics": {},
+        "retrieval_mode": "mini"
     }
     # Should not raise
     validate_minirag_export_row(row)
@@ -36,6 +37,7 @@ def test_validate_bad_row():
         "baseline_answer": "B",
         "baseline_method": "minirag",
         "baseline_metrics": {},
+        "retrieval_mode": "mini"
     }
     with pytest.raises(TypeError):
         validate_minirag_export_row(row)
@@ -78,3 +80,44 @@ def test_dry_run_export_compatibility(tmp_path):
     result = adapter.process_item(items[0])
     assert result["id"] == "t1"
     assert "sufficiency_report" in result
+
+def test_run_export_missing_index_files(tmp_path, monkeypatch, capsys):
+    # Setup dummy Minirag repo mock to get past import check
+    minirag_root = tmp_path / "minirag"
+    minirag_root.mkdir()
+    mr_pkg = minirag_root / "minirag"
+    mr_pkg.mkdir()
+    (mr_pkg / "__init__.py").write_text("class MiniRAG:\n    def __init__(self, *args, **kwargs): pass\n")
+    (mr_pkg / "minirag.py").write_text("class QueryParam: pass\n")
+    (mr_pkg / "operate.py").write_text("def naive_query(): pass\n")
+    (mr_pkg / "llm").mkdir()
+    (mr_pkg / "llm" / "__init__.py").write_text("")
+    (mr_pkg / "llm" / "ollama.py").write_text("def ollama_model_complete(): pass\n")
+    (mr_pkg / "llm" / "hf.py").write_text("def hf_embed(): pass\n")
+    (mr_pkg / "utils.py").write_text("class EmbeddingFunc:\n    def __init__(self, *args, **kwargs): pass\n")
+    
+    import sys
+    sys.path.append(str(minirag_root))
+    
+    qa_file = tmp_path / "qa.jsonl"
+    qa_file.write_text('{"id":"t1", "question":"Q", "gold_answer":"A", "gold_supporting_sources":[]}\n')
+    
+    # Empty working dir
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+    
+    # run_export catches the FileNotFoundError and calls sys.exit(1)
+    with pytest.raises(SystemExit) as exc_info:
+        run_export(
+            minirag_root=str(minirag_root),
+            working_dir=str(working_dir),
+            qa_file=str(qa_file),
+            output_file=str(tmp_path / "out.jsonl"),
+            dry_run=False,
+            mode="mini"
+        )
+    
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "required index files are missing" in captured.out
+    assert "vdb_entities.json" in captured.out

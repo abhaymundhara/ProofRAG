@@ -18,8 +18,8 @@ def test_check_minirag_ready_graceful():
     # Test with non-existent paths to ensure it doesn't crash
     status = check_minirag_ready(minirag_dir="/tmp/none", qa_file="/tmp/none", working_dir="/tmp/none")
     assert isinstance(status, dict)
-    assert "ready" in status
-    assert status["ready"] is False
+    assert "mini_mode_runnable" in status
+    assert status["mini_mode_runnable"] is False
 
 def test_check_minirag_ready_parser_flags():
     import subprocess
@@ -33,7 +33,6 @@ def test_check_minirag_ready_parser_flags():
     # Check flags one by one or combined
     subprocess.run(base_cmd + ["--minirag-dir", "/tmp"], check=False, capture_output=True)
     subprocess.run(base_cmd + ["--qa-file", "/tmp/file"], check=False, capture_output=True)
-    subprocess.run(base_cmd + ["--workingdir", "/tmp"], check=False, capture_output=True)
     subprocess.run(base_cmd + ["--working-dir", "/tmp"], check=False, capture_output=True)
 
 def test_check_minirag_ready_fails_when_missing():
@@ -44,7 +43,8 @@ def test_check_minirag_ready_fails_when_missing():
     cmd = [
         sys.executable, "tools/external/check_minirag_ready.py",
         "--minirag-dir", "/tmp/nonexistent_dir_999",
-        "--qa-file", "/tmp/nonexistent_file_999"
+        "--qa-file", "/tmp/nonexistent_file_999",
+        "--working-dir", "/tmp/nonexistent_working_dir_999"
     ]
     result = subprocess.run(cmd, capture_output=True)
     assert result.returncode != 0
