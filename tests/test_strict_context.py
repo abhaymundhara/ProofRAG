@@ -193,3 +193,12 @@ class TestStrictContextPacker:
 
         for section in _REQUIRED_SECTIONS:
             assert section in prompt, f"Section '{section}' missing from prompt"
+
+    def test_instruction_tells_model_to_handle_event_mismatches(self):
+        contract = _make_contract()
+        ledger = _make_full_ledger()
+        report = scorer.score(contract, ledger)
+        prompt = packer.pack(_QUESTION, contract, ledger, report)
+
+        assert "mismatch explicitly" in prompt.lower()
+        assert "unsupported labels" in prompt.lower()

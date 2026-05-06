@@ -152,5 +152,11 @@ class StrictContextPacker:
             "sections above.  Cite [record_id] when referencing a specific "
             "piece of evidence."
         )
+        lines.append(
+            "\nIMPORTANT: If the question uses a specific label for an event "
+            "(e.g., 'dinner') but the evidence uses a different label "
+            "(e.g., 'lunch', 'café'), you MUST mention the mismatch explicitly. "
+            "Do NOT restate unsupported labels from the question as facts."
+        )
 
         return "\n".join(lines)
