@@ -14,12 +14,14 @@ class EvidenceRecord(BaseModel):
     """A single piece of evidence retrieved from a source.
 
     Attributes:
-        record_id:      Unique identifier for this record.
-        source_id:      Identifier of the document/chunk this record came from.
-        text:           The verbatim or summarised text of the evidence.
-        supports_slots: List of slot_ids that this record supports.
-        confidence:     Retrieval confidence in [0, 1].
-        contradicts:    List of slot_ids that this record contradicts.
+        record_id:         Unique identifier for this record.
+        source_id:         Identifier of the document/chunk this record came from.
+        text:              The verbatim or summarised text of the evidence.
+        supports_slots:    List of slot_ids that this record supports.
+        confidence:        Retrieval confidence in [0, 1].
+        contradicts:       List of slot_ids that this record contradicts.
+        evidence_strength: The qualitative strength of the evidence
+                           (direct, indirect, background).
     """
 
     record_id: str
@@ -28,6 +30,7 @@ class EvidenceRecord(BaseModel):
     supports_slots: list[str]
     confidence: float = Field(ge=0.0, le=1.0)
     contradicts: list[str] = Field(default_factory=list)
+    evidence_strength: str = Field(default="direct")
 
 
 class EvidenceLedger(BaseModel):

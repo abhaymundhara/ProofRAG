@@ -93,6 +93,7 @@ class DummyRetriever:
                 supports_slots=supported_slots,
                 confidence=0.75,
                 contradicts=[],
+                evidence_strength=doc.get("evidence_strength", "direct"),
             )
             records.append(record)
 

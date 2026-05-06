@@ -83,6 +83,7 @@ class StrictContextPacker:
                 lines.append(
                     f"  [record_id={rec.record_id}] "
                     f"[source={rec.source_id}] "
+                    f"[strength={rec.evidence_strength}] "
                     f"[confidence={rec.confidence:.2f}] "
                     f"[slots={slots_label}]"
                 )

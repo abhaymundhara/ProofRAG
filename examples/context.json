@@ -33,6 +33,7 @@
     "source_id": "doc-006",
     "text": "The meeting on Monday involved Tom, LiHua, and the support team lead.",
     "keywords": ["meeting", "monday", "tom", "lihua", "support", "team"],
-    "supports_slots": ["who_asked"]
+    "supports_slots": []
   }
+
 ]

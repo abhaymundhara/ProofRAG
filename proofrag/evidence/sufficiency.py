@@ -75,7 +75,11 @@ class RuleBasedSufficiencyScorer:
 
         for slot in required_slots:
             supporting = ledger.records_for_slot(slot.slot_id)
-            if len(supporting) >= slot.min_sources:
+            # Only direct evidence can satisfy required slots by default
+            direct_supporting = [
+                r for r in supporting if r.evidence_strength == "direct"
+            ]
+            if len(direct_supporting) >= slot.min_sources:
                 covered.append(slot.slot_id)
             else:
                 missing.append(slot.slot_id)

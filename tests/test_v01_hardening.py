@@ -100,3 +100,83 @@ def test_sufficiency_fails_if_required_evidence_missing():
     assert report.answer_allowed is False
     assert "who_asked" in report.missing_required_slots
     assert report.coverage_score == 0.5
+
+
+def test_indirect_evidence_does_not_satisfy_required_slot():
+    """
+    Verify that if a required slot is supported only by 'indirect' or 'background'
+    evidence, the SufficiencyScorer marks it as missing.
+    """
+    contract = EvidenceContract(
+        question="Who asked LiHua about the laptop warranty issue?",
+        query_type="factoid",
+        slots=[
+            EvidenceSlot(
+                slot_id="who_asked",
+                description="The person who asked",
+                evidence_type="factual",
+                required=True,
+                min_sources=1
+            )
+        ]
+    )
+
+    # Scenario: We have evidence that Tom was at the meeting (indirect/background),
+    # but not that he asked (direct).
+    from proofrag.evidence.ledger import EvidenceRecord
+    ledger = EvidenceLedger(records=[
+        EvidenceRecord(
+            record_id="rec-1",
+            source_id="doc-006",
+            text="The meeting on Monday involved Tom and LiHua.",
+            supports_slots=["who_asked"],
+            confidence=0.75,
+            evidence_strength="indirect"
+        )
+    ])
+
+    scorer = RuleBasedSufficiencyScorer()
+    report = scorer.score(contract, ledger)
+
+    assert report.answer_allowed is False
+    assert "who_asked" in report.missing_required_slots
+    assert report.coverage_score == 0.0
+    assert "Missing required slots: who_asked" in report.reason
+
+
+def test_direct_evidence_satisfies_required_slot():
+    """
+    Verify that 'direct' evidence (the default) satisfies a required slot.
+    """
+    contract = EvidenceContract(
+        question="Who asked LiHua about the laptop warranty issue?",
+        query_type="factoid",
+        slots=[
+            EvidenceSlot(
+                slot_id="who_asked",
+                description="The person who asked",
+                evidence_type="factual",
+                required=True,
+                min_sources=1
+            )
+        ]
+    )
+
+    from proofrag.evidence.ledger import EvidenceRecord
+    ledger = EvidenceLedger(records=[
+        EvidenceRecord(
+            record_id="rec-2",
+            source_id="doc-002",
+            text="Tom asked LiHua about the laptop warranty issue.",
+            supports_slots=["who_asked"],
+            confidence=0.75,
+            evidence_strength="direct"
+        )
+    ])
+
+    scorer = RuleBasedSufficiencyScorer()
+    report = scorer.score(contract, ledger)
+
+    assert report.answer_allowed is True
+    assert len(report.missing_required_slots) == 0
+    assert report.coverage_score == 1.0
