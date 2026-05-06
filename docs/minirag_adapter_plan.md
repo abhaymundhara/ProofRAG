@@ -112,8 +112,22 @@ The `tools/external/minirag_exporter.py` script facilitates data transfer from M
 - **Indexing Runtime**: Full indexing of LiHua-World takes time. We should use a subset for initial adapter testing.
 - **Retrieved Context Exposure**: `Step_1_QA.py` does not save contexts. We must use our own exporter or patch the reproduction script.
 - **Dependency Conflicts**: MiniRAG requires specific versions of `transformers` and `torch`. It is best to run it in a separate virtual environment and only share the output JSONL.
+- **Evaluation**: The exported JSONL can be loaded by `MiniRAGOutputAdapter` for ProofRAG verification.
 
-## G. Next Implementation Tasks
+## G. ProofRAG-over-MiniRAG experiment
+
+This experiment runner evaluates ProofRAG's behavioral logic over contexts retrieved by MiniRAG.
+
+- **Input Schema**: Consumes the MiniRAG normalized JSONL export.
+- **Output Metrics**:
+    - **Answer Allowed Rate**: Percentage of queries where ProofRAG permitted an answer.
+    - **Mean Coverage**: Average slot fulfillment across the dataset.
+    - **Evidence Mix**: Distribution of direct vs. indirect vs. background evidence.
+    - **Heuristic Pass Rate**: Consistency between ProofRAG's decision and a simple "all gold sources found" heuristic.
+- **Limitation**: The current support-slot inference is based on keyword/regex heuristics. Final benchmarks will require manual or LLM-based evidence labeling.
+- **Next Milestone**: Real MiniRAG execution on a tiny subset to generate actual graph-retrieved contexts.
+
+## H. Next Implementation Tasks
 
 1.  **Add toy benchmark harness**: Create a skeleton in `proofrag/benchmarks/` to handle JSONL result loading.
 2.  **Add MiniRAGOutputAdapter**: A utility to parse MiniRAG's CSV-in-Markdown context format.

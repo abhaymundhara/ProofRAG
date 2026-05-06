@@ -117,6 +117,20 @@ An optional helper tool is provided to export real MiniRAG results for evaluatio
 
 ---
 
+## ProofRAG over MiniRAG exports
+
+Run ProofRAG's evidence-gated verification over real or simulated MiniRAG exports.
+
+- **Command**:
+  ```bash
+  python scripts/run_proofrag_over_minirag.py \
+    --input benchmarks/sample_minirag_export.jsonl \
+    --output experiments/results/proofrag_over_minirag_results.jsonl
+  ```
+- **Analysis**: This runner applies ProofRAG's `StrictContextPacker` and `RuleBasedSufficiencyScorer` to external contexts, providing a behavioral analysis of where the baseline system may have succeeded or failed to meet evidence requirements.
+
+---
+
 ## Core Concepts
 
 | Concept | Description |
