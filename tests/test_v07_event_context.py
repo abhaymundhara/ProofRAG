@@ -92,3 +92,34 @@ def test_event_context_negative_placeholder():
     
     assert "event_context" not in report["covered_slots"]
     assert report["answer_allowed"] is False
+
+def test_generic_question_direct_evidence():
+    """
+    Test that a generic question with matching context provides direct evidence
+    for both 'answer' and 'topic_context'.
+    """
+    adapter = MiniRAGOutputAdapter()
+    
+    question = "What is the Wi-Fi password at Li Hua's house?"
+    text = 'AdamSmith: Sure! The Wi-Fi password is "Family123".'
+    
+    inference = adapter._infer_evidence(text, question, {})
+    
+    assert "answer" in inference["supports_slots"]
+    assert "topic_context" in inference["supports_slots"]
+    assert inference["evidence_strength"] == "direct"
+
+def test_generic_question_friends_over_direct_evidence():
+    """
+    Test that a second generic question provides direct evidence.
+    """
+    adapter = MiniRAGOutputAdapter()
+    
+    question = "What does Adam say about having friends over?"
+    text = "AdamSmith: You're welcome! Yes, having friends over occasionally is fine, just try to keep the gatherings reasonable."
+    
+    inference = adapter._infer_evidence(text, question, {})
+    
+    assert "answer" in inference["supports_slots"]
+    assert "topic_context" in inference["supports_slots"]
+    assert inference["evidence_strength"] == "direct"

@@ -119,7 +119,7 @@ class MiniRAGOutputAdapter:
             if overlap:
                 supports_slots.append("topic_context")
                 supports_slots.append("answer")
-                evidence_strength = "indirect"
+                evidence_strength = "direct"
         
         # Contradiction markers
         if metadata.get("contradiction") is True or "no one asked" in t_lower:
