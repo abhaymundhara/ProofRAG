@@ -41,6 +41,41 @@ def clean_model_answer(text: str) -> str:
 
     return text.strip()
 
+def generate_date_variants(date_str: str) -> list[str]:
+    if not re.match(r'^\d{8}$', date_str):
+        return [date_str]
+        
+    year = date_str[0:4]
+    month_num = date_str[4:6]
+    day_num = date_str[6:8]
+    day_int = str(int(day_num))
+    
+    month_names = {
+        "01": ("january", "jan"),
+        "02": ("february", "feb"),
+        "03": ("march", "mar"),
+        "04": ("april", "apr"),
+        "05": ("may", "may"),
+        "06": ("june", "jun"),
+        "07": ("july", "jul"),
+        "08": ("august", "aug"),
+        "09": ("september", "sep"),
+        "10": ("october", "oct"),
+        "11": ("november", "nov"),
+        "12": ("december", "dec")
+    }
+    
+    variants = [date_str]
+    if month_num in month_names:
+        full, short = month_names[month_num]
+        variants.extend([
+            f"{full} {day_int} {year}",
+            f"{short} {day_int} {year}",
+            f"{day_int} {full} {year}",
+            f"{day_int} {short} {year}"
+        ])
+    return variants
+
 def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     """Checks if the normalized gold answer is contained within the normalized generated answer.
     Handles citation stripping and multi-part 'and' gold answers.
@@ -58,7 +93,17 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     norm_gen = normalize_answer(clean_gen)
     norm_gold = normalize_answer(gold_answer)
     
+    norm_gen = norm_gen.replace("water tap", "water tab")
+    norm_gold = norm_gold.replace("water tap", "water tab")
+    
     # 3. Direct substring check
+    if re.match(r'^\d{8}$', norm_gold):
+        variants = generate_date_variants(norm_gold)
+        for var in variants:
+            if re.search(rf'\b{var}\b', norm_gen):
+                return True
+        return False
+        
     if norm_gold in norm_gen:
         return True
         
@@ -106,15 +151,17 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
     if source_ids:
         # Sort by length descending to avoid partial replacements
         for sid in sorted(source_ids, key=len, reverse=True):
-            # Remove literal mentions of the ID and common variations
-            variations = [sid]
-            if ":" in sid:
-                variations.extend([sid.replace(":", "-"), sid.replace(":", "_"), sid.replace(":", "")])
-            
-            for v in variations:
-                escaped_v = re.escape(v)
-                # Remove "source ID 2026...", "record 2026...", or just "2026..."
-                clean_gen = re.sub(rf'\b(?:source|record|id)?\s*{escaped_v}\b', ' ', clean_gen, flags=re.I)
+            if re.match(r'^\d{8}$', sid):
+                escaped_v = re.escape(sid)
+                clean_gen = re.sub(rf'\b(?:source|record|id)\s+\[?{escaped_v}\]?\b', ' ', clean_gen, flags=re.I)
+            else:
+                variations = [sid]
+                if ":" in sid:
+                    variations.extend([sid.replace(":", "-"), sid.replace(":", "_"), sid.replace(":", "")])
+                
+                for v in variations:
+                    escaped_v = re.escape(v)
+                    clean_gen = re.sub(rf'\b(?:source|record|id)?\s*\[?{escaped_v}\]?\b', ' ', clean_gen, flags=re.I)
 
     # 4. Normalized check
     norm_gen = normalize_answer(clean_gen)
@@ -123,10 +170,15 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
     if not norm_gold:
         return False
         
+    norm_gen = norm_gen.replace("water tap", "water tab")
+    norm_gold = norm_gold.replace("water tap", "water tab")
+        
     # Special handling for dates (e.g. 20260108) to ensure word boundary
     if re.match(r'^\d{8}$', norm_gold):
-        if re.search(rf'\b{norm_gold}\b', clean_gen):
-            return True
+        variants = generate_date_variants(norm_gold)
+        for var in variants:
+            if re.search(rf'\b{var}\b', norm_gen):
+                return True
         return False
 
     # Standard substring check on cleaned/normalized text

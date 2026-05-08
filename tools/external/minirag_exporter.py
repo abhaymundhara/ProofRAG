@@ -154,12 +154,18 @@ def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: s
 
             # Use the official MiniRAG query interface which handles mode dispatching (mini, naive, etc.)
             async def get_results(question):
+                # 1. Retrieve context only, for ProofRAG evidence input
                 ctx = await rag.aquery(
                     question,
                     param=QueryParam(mode=mode, only_need_context=True)
                 )
-                # Skip baseline answer generation if it's too slow for this export task
-                ans = "MiniRAG baseline answer generation skipped in this export."
+
+                # 2. Run actual MiniRAG answer generation, for baseline scoring
+                ans = await rag.aquery(
+                    question,
+                    param=QueryParam(mode=mode, only_need_context=False)
+                )
+
                 return ctx, ans
 
             loop = asyncio.new_event_loop()

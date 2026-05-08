@@ -73,19 +73,36 @@ def main():
                     print(f"Error calling model for {item.id}: {e}")
                     proofrag_answer = f"ERROR: {e}"
 
+            baseline_contains_gold_answer = contains_gold_answer(item.baseline_answer, item.gold_answer)
+            baseline_correct = is_answer_correct(
+                item.baseline_answer,
+                item.gold_answer,
+                source_ids=item.gold_supporting_sources
+            )
+            proofrag_contains_gold_answer = contains_gold_answer(proofrag_answer, item.gold_answer) if model_called else False
+            proofrag_correct = is_answer_correct(
+                proofrag_answer,
+                item.gold_answer,
+                source_ids=item.gold_supporting_sources
+            ) if model_called else False
+
             res = {
                 "id": item.id,
                 "question": item.question,
                 "baseline_method": item.baseline_method,
                 "baseline_answer": item.baseline_answer,
+                "baseline_contains_gold_answer": baseline_contains_gold_answer,
+                "baseline_correct": baseline_correct,
                 "gold_answer": item.gold_answer,
                 "answer_allowed": report_dict["answer_allowed"],
                 "model_called": model_called,
                 "raw_proofrag_generated_answer": raw_proofrag_answer,
                 "proofrag_generated_answer": proofrag_answer,
+                "proofrag_contains_gold_answer": proofrag_contains_gold_answer,
+                "proofrag_correct": proofrag_correct,
                 "model_thinking_present": thinking is not None,
-                "contains_gold_answer_raw": contains_gold_answer(proofrag_answer, item.gold_answer) if model_called else False,
-                "correct_when_answered": is_answer_correct(proofrag_answer, item.gold_answer, source_ids=item.gold_supporting_sources) if model_called else False,
+                "contains_gold_answer_raw": proofrag_contains_gold_answer,
+                "correct_when_answered": proofrag_correct,
                 "coverage_score": report_dict["coverage_score"],
                 "missing_required_slots": report_dict["missing_required_slots"],
                 "contract_slot_ids": report_dict.get("contract_slot_ids", []),

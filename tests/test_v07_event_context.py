@@ -123,3 +123,34 @@ def test_generic_question_friends_over_direct_evidence():
     assert "answer" in inference["supports_slots"]
     assert "topic_context" in inference["supports_slots"]
     assert inference["evidence_strength"] == "direct"
+
+def test_generic_question_report_direct_evidence():
+    """
+    Test that 'what does X report' style questions use strong dialogue patterns
+    to identify direct evidence even without keyword overlap.
+    """
+    adapter = MiniRAGOutputAdapter()
+    
+    question = "What does Li Hua report to Adam on January 6th?"
+    text = "LiHua: Hey Adam, just wanted to let you know that the water tab in the apartment is broken."
+    
+    inference = adapter._infer_evidence(text, question, {})
+    
+    assert "answer" in inference["supports_slots"]
+    assert "topic_context" in inference["supports_slots"]
+    assert inference["evidence_strength"] == "direct"
+
+def test_generic_question_report_negative_evidence():
+    """
+    Test that unrelated text does not provide evidence for 'what does X report' questions.
+    """
+    adapter = MiniRAGOutputAdapter()
+    
+    question = "What does Li Hua report to Adam on January 6th?"
+    text = "LiHua: Hey Adam, the weather is quite nice today. I am going for a walk."
+    
+    inference = adapter._infer_evidence(text, question, {})
+    
+    assert "answer" not in inference["supports_slots"]
+    assert "topic_context" not in inference["supports_slots"]
+    assert inference["evidence_strength"] == "background"

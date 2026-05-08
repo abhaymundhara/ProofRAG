@@ -91,3 +91,69 @@ def test_contradiction_blocks_answer(tmp_path):
     
     assert result["sufficiency_report"]["answer_allowed"] is False
     assert result["sufficiency_report"]["contradiction_count"] > 0
+
+def test_extract_minirag_source_rows():
+    adapter = MiniRAGOutputAdapter()
+    text = '''
+-----Entities-----
+```csv
+entity,score,description
+"E1",1.0,"desc"
+```
+-----Sources-----
+```csv
+id,content
+0,"Time: 20260106_15:00
+AdamSmith: Hey Li Hua"
+1,"Time: 20260106_13:00
+LiHua: the water tab in the apartment is broken"
+```
+'''
+    rows = adapter._extract_minirag_source_rows(text)
+    assert len(rows) == 2
+    assert rows[0]["id"] == "0"
+    assert "Time: 20260106_15:00" in rows[0]["content"]
+    assert rows[1]["id"] == "1"
+    assert "water tab" in rows[1]["content"]
+
+def test_lihua_single_0008_regression():
+    adapter = MiniRAGOutputAdapter()
+    text = '''
+-----Sources-----
+```csv
+id,content
+0,"Time: 20260106_15:00
+AdamSmith: plumber arrives tomorrow at 10 AM"
+3,"Time: 20260106_13:00
+LiHua: just wanted to let you know that the water tab in the apartment is broken."
+```
+'''
+    item = MiniRAGExportItem(
+        id="lihua-single-0008",
+        dataset="test",
+        question="What does Li Hua report to Adam on January 6th?",
+        query_type="factoid",
+        gold_answer="the water tab in the apartment is broken",
+        gold_supporting_sources=["d1"],
+        retrieved_context=[{"source_id": "minirag-retrieval", "text": text, "metadata": {}}],
+        baseline_answer="",
+        baseline_method="minirag",
+        baseline_metrics={}
+    )
+    result = adapter.process_item(item)
+    
+    report = result["sufficiency_report"]
+    records = result["evidence_records"]
+    
+    assert len(records) == 2
+    assert report["answer_allowed"] is True
+    
+    # Check that record for source 3 exists and supports slots
+    water_tab_record = next(r for r in records if "water tab" in r["text"])
+    assert "answer" in water_tab_record["supports_slots"]
+    assert "topic_context" in water_tab_record["supports_slots"]
+    assert water_tab_record["evidence_strength"] == "direct"
+    
+    # Check that record for source 0 exists but doesn't necessarily support the required slots directly
+    plumber_record = next(r for r in records if "plumber" in r["text"])
+    assert "answer" not in plumber_record["supports_slots"]

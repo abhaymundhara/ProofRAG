@@ -15,3 +15,28 @@ def test_contains_gold_answer():
     assert contains_gold_answer("Tom", "Tom") == True
     assert contains_gold_answer("The person was Tom Smith.", "Tom") == True
     assert contains_gold_answer("Tom Smith", "Tom Smith") == True
+
+from proofrag.evaluation.answer_metrics import is_answer_correct
+
+def test_water_tap_typo_normalization():
+    # 'water tap in the apartment is broken' should match gold 'water tab in the apartment is broken'
+    assert is_answer_correct("the water tap in the apartment is broken", "the water tab in the apartment is broken") == True
+
+def test_date_variants_normalization():
+    # 'January 8, 2026' should match gold '20260108'
+    assert is_answer_correct("January 8, 2026", "20260108") == True
+    assert is_answer_correct("Jan 8, 2026", "20260108") == True
+    assert is_answer_correct("8 January 2026", "20260108") == True
+    assert is_answer_correct("The event is on 20260108.", "20260108") == True
+
+def test_source_id_isolation():
+    # An answer that only contains 'record_id=minirag-lihua-single-0002-0-src0' should not count as correct for date gold '20260108'
+    generated = "[record_id=minirag-lihua-single-0002-0-src0]"
+    assert is_answer_correct(generated, "20260108", source_ids=["20260108"]) == False
+    
+    generated2 = "Source 20260108_11:00 says hello."
+    assert is_answer_correct(generated2, "20260108", source_ids=["20260108_11:00"]) == False
+    
+    # But if the natural date is in the answer, it should be correct
+    generated3 = "Source 20260108_11:00 says the date is 20260108."
+    assert is_answer_correct(generated3, "20260108", source_ids=["20260108_11:00"]) == True
