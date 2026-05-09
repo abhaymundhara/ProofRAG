@@ -74,6 +74,8 @@ def test_release_checks_passes_external_gate_artifact_args(tmp_path: Path):
             "data",
             "--min-lihua-qa-rows",
             "10",
+            "--min-lihua-source-resolution",
+            "0.8",
             "--minirag-export",
             "export.jsonl",
             "--min-baseline-export-rows",
@@ -102,6 +104,8 @@ def test_release_checks_passes_external_gate_artifact_args(tmp_path: Path):
     assert "qa.csv" in command
     assert "--min-lihua-qa-rows" in command
     assert "10" in command
+    assert "--min-lihua-source-resolution" in command
+    assert "0.8" in command
     assert "--minirag-export" in command
     assert "export.jsonl" in command
     assert "--docker-evidence" in command

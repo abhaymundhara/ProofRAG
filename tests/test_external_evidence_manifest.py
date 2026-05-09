@@ -14,6 +14,7 @@ def _args(**overrides: object) -> argparse.Namespace:
         "lihua_qa_csv": None,
         "lihua_data_dir": None,
         "min_lihua_qa_rows": 100,
+        "min_lihua_source_resolution": 0.90,
         "minirag_export": None,
         "min_baseline_export_rows": 100,
         "comparison_summary": None,
@@ -67,6 +68,7 @@ def test_manifest_includes_all_supplied_external_paths():
     gate_shell = manifest["commands"]["completion_gate_shell"]
     release_shell = manifest["commands"]["full_release_shell"]
     assert "--lihua-qa-csv data/query_set.csv" in gate_shell
+    assert "--min-lihua-source-resolution 0.9" in gate_shell
     assert "--ci-evidence results/ci.txt" in gate_shell
     assert "--ci-url https://github.com/example/proofrag/actions/runs/123" in gate_shell
     assert "--claim-min-total 100" in gate_shell

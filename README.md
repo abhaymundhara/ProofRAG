@@ -311,11 +311,24 @@ python scripts/run_local_release_checks.py \
   --output-dir experiments/results/local_release_checks
 ```
 
+Initialize the external evidence bundle before a full publication run:
+
+```bash
+python scripts/init_external_evidence_bundle.py \
+  --output-dir experiments/results/external_evidence_bundle
+```
+
+The generated `.template` files are intentionally rejected by the completion
+gate until every placeholder is replaced with real LiHua, MiniRAG/LightRAG,
+Docker, and CI evidence.
+
 When full external LiHua/MiniRAG artifacts exist, add
 `--require-external-gates`, the `--lihua-*`, `--minirag-export`,
 comparison/faithfulness/review, Docker, CI, and claim-threshold flags shown in
-[docs/reproducibility.md](docs/reproducibility.md). Remote CI uploads the same
-release evidence bundle as `proofrag-release-evidence` on the Python 3.11 lane.
+[docs/reproducibility.md](docs/reproducibility.md) and
+[docs/external_evidence_checklist.md](docs/external_evidence_checklist.md).
+Remote CI uploads the same release evidence bundle as
+`proofrag-release-evidence` on the Python 3.11 lane.
 Use that artifact, or a saved `gh run view --json conclusion` output, as
 `--ci-evidence`; a run URL alone is only supporting context.
 Use `scripts/write_external_evidence_manifest.py` to generate a reviewer-facing

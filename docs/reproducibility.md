@@ -17,7 +17,11 @@ pip install -e ".[api]"
 ```
 
 For the current roadmap-to-artifact status, see
-`docs/completion_audit.md`.
+`docs/completion_audit.md`. For the external artifact handoff needed before
+final MiniRAG-vs-ProofRAG claims, see `docs/external_evidence_checklist.md`.
+Use `docs/full_benchmark_review_template.md` when writing the review note
+consumed by `--review-note`. Use `docs/release_evidence_templates.md` when
+recording Docker and CI evidence.
 
 ## External Completion Gates
 
@@ -35,6 +39,7 @@ When the full external artifacts exist, run:
 python scripts/check_completion_gates.py \
   --lihua-qa-csv path/to/LiHua-World/qa/query_set.csv \
   --lihua-data-dir path/to/LiHua-World/data \
+  --min-lihua-source-resolution 0.90 \
   --minirag-export experiments/results/full_minirag_export.jsonl \
   --comparison-summary experiments/results/full_comparison_summary.json \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
@@ -51,10 +56,13 @@ python scripts/check_completion_gates.py \
   --output-json experiments/results/completion_gates.json
 ```
 
-The completion gate defaults to at least 100 LiHua QA rows and 100 normalized
-baseline-export rows. Use `--min-lihua-qa-rows` and
+The completion gate defaults to at least 100 LiHua QA rows, at least 90%
+LiHua evidence-ID source resolution, and 100 normalized baseline-export rows.
+Use `--min-lihua-qa-rows`, `--min-lihua-source-resolution`, and
 `--min-baseline-export-rows` only when intentionally validating a smaller smoke
 fixture.
+The normalized MiniRAG/LightRAG export must schema-validate, use unique row IDs,
+and include non-empty retrieved context for every row.
 
 Docker evidence must mention a successful `docker build`; CI evidence must be a
 file indicating a successful GitHub Actions or CI conclusion. A GitHub Actions
@@ -62,6 +70,8 @@ run URL is useful supporting context, but it is not accepted as success evidence
 by itself. The completion gate also applies publication-claim thresholds to the
 comparison and faithfulness summaries, so schema-valid weak metrics cannot mark
 the repository ready for superiority claims.
+The review note must explicitly mention the benchmark review scope and the
+comparison and faithfulness artifacts being reviewed.
 
 To produce a reviewer-facing checklist and copyable validation commands from
 the artifact paths, write an external evidence manifest:
@@ -70,6 +80,7 @@ the artifact paths, write an external evidence manifest:
 python scripts/write_external_evidence_manifest.py \
   --lihua-qa-csv path/to/LiHua-World/qa/query_set.csv \
   --lihua-data-dir path/to/LiHua-World/data \
+  --min-lihua-source-resolution 0.90 \
   --minirag-export experiments/results/full_minirag_export.jsonl \
   --comparison-summary experiments/results/full_comparison_summary.json \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
@@ -115,6 +126,7 @@ python scripts/run_local_release_checks.py \
   --require-significance \
   --lihua-qa-csv path/to/LiHua-World/qa/query_set.csv \
   --lihua-data-dir path/to/LiHua-World/data \
+  --min-lihua-source-resolution 0.90 \
   --minirag-export experiments/results/full_minirag_export.jsonl \
   --comparison-summary experiments/results/full_comparison_summary.json \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \

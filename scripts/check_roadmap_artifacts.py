@@ -150,13 +150,17 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
         artifacts=(
             "scripts/check_completion_gates.py",
             "scripts/validate_publication_claims.py",
+            "scripts/init_external_evidence_bundle.py",
             "scripts/write_external_evidence_manifest.py",
             "docs/results_snapshot.md",
+            "docs/external_evidence_checklist.md",
+            "docs/full_benchmark_review_template.md",
         ),
         verification=(
             "tests/test_completion_gates.py",
             "tests/test_publication_claims.py",
             "tests/test_external_evidence_manifest.py",
+            "tests/test_external_evidence_bundle.py",
         ),
         external_blockers=(
             "Full external MiniRAG/LightRAG exports are not present.",
@@ -195,6 +199,8 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
             "docs/paper_abstract.md",
             "docs/figures/architecture.svg",
             "docs/completion_audit.md",
+            "docs/external_evidence_checklist.md",
+            "docs/full_benchmark_review_template.md",
         ),
         verification=("tests/test_packaging_metadata.py",),
     ),
@@ -204,9 +210,15 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
         artifacts=(
             "scripts/run_local_release_checks.py",
             ".github/workflows/ci.yml",
+            "scripts/init_external_evidence_bundle.py",
             "scripts/write_external_evidence_manifest.py",
+            "docs/release_evidence_templates.md",
         ),
-        verification=("tests/test_release_checks.py", "tests/test_external_evidence_manifest.py"),
+        verification=(
+            "tests/test_release_checks.py",
+            "tests/test_external_evidence_manifest.py",
+            "tests/test_external_evidence_bundle.py",
+        ),
         external_blockers=("Remote GitHub CI run evidence is not present.",),
     ),
 )

@@ -89,4 +89,7 @@ def test_readme_documents_release_evidence_path():
     assert "scripts/run_local_release_checks.py" in readme
     assert "--require-external-gates" in readme
     assert "docs/reproducibility.md" in readme
+    assert "docs/external_evidence_checklist.md" in readme
+    assert "scripts/init_external_evidence_bundle.py" in readme
+    assert ".template` files are intentionally rejected" in readme
     assert "proofrag-release-evidence" in readme

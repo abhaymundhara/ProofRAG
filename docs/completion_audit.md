@@ -38,7 +38,7 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 234 tests, 2 third-party deprecation warnings.
+- `pytest` passed: 245 tests, 2 third-party deprecation warnings.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.
@@ -92,6 +92,7 @@ The external gates can be checked explicitly with:
 python scripts/check_completion_gates.py \
   --lihua-qa-csv path/to/LiHua-World/qa/query_set.csv \
   --lihua-data-dir path/to/LiHua-World/data \
+  --min-lihua-source-resolution 0.90 \
   --minirag-export experiments/results/full_minirag_export.jsonl \
   --comparison-summary experiments/results/full_comparison_summary.json \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
@@ -113,15 +114,20 @@ pre-written `--docker-evidence` file.
 A reviewer-facing checklist and exact validation commands can be generated with
 `scripts/write_external_evidence_manifest.py` once artifact paths are known.
 
-The completion gate defaults to at least 100 LiHua QA rows and 100 normalized
-baseline-export rows, so the bundled smoke fixtures cannot satisfy full
-publication readiness by accident.
+The completion gate defaults to at least 100 LiHua QA rows, at least 90%
+LiHua evidence-ID source resolution, and 100 normalized baseline-export rows,
+so the bundled smoke fixtures cannot satisfy full publication readiness by
+accident.
+The normalized MiniRAG/LightRAG export must schema-validate, use unique row IDs,
+and include non-empty retrieved context for every row.
 Docker evidence must mention a successful `docker build`, and CI evidence must
 be a file indicating a successful GitHub Actions or CI conclusion. A GitHub
 Actions run URL is optional supporting context and is not accepted as success
 evidence by itself.
 The completion gate also applies publication-claim thresholds before setting
 `ready_for_superiority_claim=true`.
+The review note must explicitly mention the benchmark review scope and the
+comparison and faithfulness artifacts being reviewed.
 
 When full comparison and faithfulness summaries exist, publication claims must
 also pass:

@@ -188,6 +188,7 @@ def _completion_gate_args(args: argparse.Namespace, output_json: Path) -> list[s
         ("--lihua-qa-csv", args.lihua_qa_csv),
         ("--lihua-data-dir", args.lihua_data_dir),
         ("--min-lihua-qa-rows", args.min_lihua_qa_rows),
+        ("--min-lihua-source-resolution", args.min_lihua_source_resolution),
         ("--minirag-export", args.minirag_export),
         ("--min-baseline-export-rows", args.min_baseline_export_rows),
         ("--comparison-summary", args.comparison_summary),
@@ -316,6 +317,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lihua-qa-csv")
     parser.add_argument("--lihua-data-dir")
     parser.add_argument("--min-lihua-qa-rows", type=int)
+    parser.add_argument("--min-lihua-source-resolution", type=float)
     parser.add_argument("--minirag-export")
     parser.add_argument("--min-baseline-export-rows", type=int)
     parser.add_argument("--comparison-summary")

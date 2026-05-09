@@ -14,6 +14,7 @@ def _args(tmp_path: Path, **overrides: object) -> argparse.Namespace:
         "lihua_qa_csv": None,
         "lihua_data_dir": None,
         "min_lihua_qa_rows": 100,
+        "min_lihua_source_resolution": 0.90,
         "minirag_export": None,
         "min_baseline_export_rows": 100,
         "comparison_summary": None,
@@ -94,7 +95,10 @@ def test_completion_gates_pass_with_concrete_artifacts(tmp_path: Path):
         encoding="utf-8",
     )
     review = tmp_path / "review.md"
-    review.write_text("Reviewed full external benchmark artifacts.\n", encoding="utf-8")
+    review.write_text(
+        "Reviewed full external benchmark comparison and faithfulness artifacts.\n",
+        encoding="utf-8",
+    )
     docker_evidence = tmp_path / "docker.txt"
     docker_evidence.write_text("docker build succeeded\n", encoding="utf-8")
     ci_evidence = tmp_path / "ci.txt"
@@ -136,6 +140,28 @@ def test_completion_gates_reject_vague_docker_evidence(tmp_path: Path):
     assert "docker build" in gate["detail"]
 
 
+def test_completion_gates_reject_docker_evidence_template(tmp_path: Path):
+    evidence = tmp_path / "docker.txt"
+    evidence.write_text(
+        "ProofRAG Docker build evidence\n"
+        "Command:\n"
+        "docker build -t proofrag:completion-gate .\n"
+        "Result:\n"
+        "docker build succeeded\n"
+        "Output excerpt:\n"
+        "<paste the final docker build lines>\n",
+        encoding="utf-8",
+    )
+
+    report = build_completion_report(_args(tmp_path, docker_evidence=str(evidence)))
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "docker_build_verified"
+    )
+    assert gate["passed"] is False
+    assert "template placeholders" in gate["detail"]
+
+
 def test_completion_gates_reject_non_actions_ci_url(tmp_path: Path):
     report = build_completion_report(
         _args(tmp_path, ci_url="https://github.com/example/proofrag")
@@ -158,6 +184,25 @@ def test_completion_gates_accept_successful_ci_evidence_file(tmp_path: Path):
         item for item in report["gates"] if item["name"] == "remote_ci_verified"
     )
     assert gate["passed"] is True
+
+
+def test_completion_gates_reject_ci_evidence_template(tmp_path: Path):
+    evidence = tmp_path / "ci.txt"
+    evidence.write_text(
+        "ProofRAG remote CI evidence\n"
+        "Provider: GitHub Actions\n"
+        "Run URL: https://github.com/OWNER/REPO/actions/runs/RUN_ID\n"
+        "Conclusion: success\n",
+        encoding="utf-8",
+    )
+
+    report = build_completion_report(_args(tmp_path, ci_evidence=str(evidence)))
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "remote_ci_verified"
+    )
+    assert gate["passed"] is False
+    assert "template placeholders" in gate["detail"]
 
 
 def test_completion_gates_reject_actions_url_without_success_evidence(tmp_path: Path):
@@ -195,6 +240,34 @@ def test_completion_gates_reject_tiny_lihua_fixture_as_full_data(tmp_path: Path)
     assert "expected at least 2" in gate["detail"]
 
 
+def test_completion_gates_reject_unresolved_lihua_sources(tmp_path: Path):
+    qa_csv = tmp_path / "query_set.csv"
+    qa_csv.write_text(
+        "Question,Answer,Evidence\n"
+        "Who asked LiHua?,Tom,doc-1<and>missing-doc\n",
+        encoding="utf-8",
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "doc-1.txt").write_text("Tom asked LiHua.\n", encoding="utf-8")
+
+    report = build_completion_report(
+        _args(
+            tmp_path,
+            lihua_qa_csv=str(qa_csv),
+            lihua_data_dir=str(data_dir),
+            min_lihua_qa_rows=1,
+            min_lihua_source_resolution=0.90,
+        )
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "full_lihua_world_data"
+    )
+    assert gate["passed"] is False
+    assert "Resolved 1/2 LiHua evidence IDs" in gate["detail"]
+
+
 def test_completion_gates_reject_tiny_baseline_export(tmp_path: Path):
     export = tmp_path / "export.jsonl"
     export.write_text(Path("benchmarks/sample_minirag_export.jsonl").read_text(), encoding="utf-8")
@@ -210,13 +283,94 @@ def test_completion_gates_reject_tiny_baseline_export(tmp_path: Path):
     assert "expected at least 4" in gate["detail"]
 
 
+def test_completion_gates_reject_duplicate_baseline_export_rows(tmp_path: Path):
+    export = tmp_path / "export.jsonl"
+    row = {
+        "id": "duplicate",
+        "dataset": "LiHua-World",
+        "question": "Who asked LiHua?",
+        "query_type": "factoid",
+        "gold_answer": "Tom",
+        "gold_supporting_sources": ["doc-1"],
+        "retrieved_context": [
+            {"source_id": "doc-1", "text": "Tom asked LiHua.", "metadata": {}}
+        ],
+        "baseline_answer": "Tom",
+        "baseline_method": "minirag",
+        "baseline_metrics": {},
+    }
+    export.write_text(
+        json.dumps(row) + "\n" + json.dumps(row) + "\n",
+        encoding="utf-8",
+    )
+
+    report = build_completion_report(
+        _args(tmp_path, minirag_export=str(export), min_baseline_export_rows=2)
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "normalized_baseline_export"
+    )
+    assert gate["passed"] is False
+    assert "duplicate row IDs" in gate["detail"]
+
+
+def test_completion_gates_reject_export_rows_without_retrieved_context(tmp_path: Path):
+    export = tmp_path / "export.jsonl"
+    rows = [
+        {
+            "id": "row-1",
+            "dataset": "LiHua-World",
+            "question": "Who asked LiHua?",
+            "query_type": "factoid",
+            "gold_answer": "Tom",
+            "gold_supporting_sources": ["doc-1"],
+            "retrieved_context": [
+                {"source_id": "doc-1", "text": "Tom asked LiHua.", "metadata": {}}
+            ],
+            "baseline_answer": "Tom",
+            "baseline_method": "minirag",
+            "baseline_metrics": {},
+        },
+        {
+            "id": "row-2",
+            "dataset": "LiHua-World",
+            "question": "What did LiHua report?",
+            "query_type": "factoid",
+            "gold_answer": "Broken tab",
+            "gold_supporting_sources": ["doc-2"],
+            "retrieved_context": [],
+            "baseline_answer": "Broken tab",
+            "baseline_method": "minirag",
+            "baseline_metrics": {},
+        },
+    ]
+    export.write_text(
+        "".join(json.dumps(row) + "\n" for row in rows),
+        encoding="utf-8",
+    )
+
+    report = build_completion_report(
+        _args(tmp_path, minirag_export=str(export), min_baseline_export_rows=2)
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "normalized_baseline_export"
+    )
+    assert gate["passed"] is False
+    assert "non-empty retrieved context" in gate["detail"]
+
+
 def test_completion_gates_reject_malformed_result_artifacts(tmp_path: Path):
     comparison = tmp_path / "comparison.json"
     comparison.write_text(json.dumps({"rows": 3}), encoding="utf-8")
     faithfulness = tmp_path / "faithfulness.json"
     faithfulness.write_text(json.dumps({"rows": 3}), encoding="utf-8")
     review = tmp_path / "review.md"
-    review.write_text("Reviewed full external benchmark artifacts.\n", encoding="utf-8")
+    review.write_text(
+        "Reviewed full external benchmark comparison and faithfulness artifacts.\n",
+        encoding="utf-8",
+    )
 
     report = build_completion_report(
         _args(
@@ -285,6 +439,114 @@ def test_completion_gates_reject_unreviewed_result_note(tmp_path: Path):
     assert "review note" in gate["detail"]
 
 
+def test_completion_gates_reject_review_note_without_metric_scope(tmp_path: Path):
+    comparison = tmp_path / "comparison.json"
+    comparison.write_text(
+        json.dumps(
+            {
+                "baseline": {"total": 1, "accuracy": 0.0},
+                "proofrag": {
+                    "total": 1,
+                    "accuracy": 1.0,
+                    "precision_at_answered": 1.0,
+                    "unsafe_allow_count": 0,
+                },
+                "paired_answer_accuracy": {"exact_p_value": 1.0},
+            }
+        ),
+        encoding="utf-8",
+    )
+    faithfulness = tmp_path / "faithfulness.json"
+    faithfulness.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "total": 1,
+                    "baseline_mean_groundedness": 0.0,
+                    "proofrag_mean_groundedness": 1.0,
+                    "baseline_unsupported_claims": 1,
+                    "proofrag_unsupported_claims": 0,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    note = tmp_path / "note.md"
+    note.write_text("Reviewed the full external benchmark.\n", encoding="utf-8")
+
+    report = build_completion_report(
+        _args(
+            tmp_path,
+            comparison_summary=str(comparison),
+            faithfulness_summary=str(faithfulness),
+            review_note=str(note),
+            claim_min_total=1,
+        )
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "reviewed_result_artifacts"
+    )
+    assert gate["passed"] is False
+    assert "comparison and faithfulness" in gate["detail"]
+
+
+def test_completion_gates_reject_review_note_template(tmp_path: Path):
+    comparison = tmp_path / "comparison.json"
+    comparison.write_text(
+        json.dumps(
+            {
+                "baseline": {"total": 1, "accuracy": 0.0},
+                "proofrag": {
+                    "total": 1,
+                    "accuracy": 1.0,
+                    "precision_at_answered": 1.0,
+                    "unsafe_allow_count": 0,
+                },
+                "paired_answer_accuracy": {"exact_p_value": 1.0},
+            }
+        ),
+        encoding="utf-8",
+    )
+    faithfulness = tmp_path / "faithfulness.json"
+    faithfulness.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "total": 1,
+                    "baseline_mean_groundedness": 0.0,
+                    "proofrag_mean_groundedness": 1.0,
+                    "baseline_unsupported_claims": 1,
+                    "proofrag_unsupported_claims": 0,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    note = tmp_path / "note.md"
+    note.write_text(
+        "Review scope benchmark comparison faithfulness\n"
+        "Claim status: approved / rejected / needs rerun\n",
+        encoding="utf-8",
+    )
+
+    report = build_completion_report(
+        _args(
+            tmp_path,
+            comparison_summary=str(comparison),
+            faithfulness_summary=str(faithfulness),
+            review_note=str(note),
+            claim_min_total=1,
+        )
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "reviewed_result_artifacts"
+    )
+    assert gate["passed"] is False
+    assert "template placeholders" in gate["detail"]
+
+
 def test_completion_gates_reject_schema_valid_but_weak_claims(tmp_path: Path):
     comparison = tmp_path / "comparison.json"
     comparison.write_text(
@@ -318,7 +580,10 @@ def test_completion_gates_reject_schema_valid_but_weak_claims(tmp_path: Path):
         encoding="utf-8",
     )
     review = tmp_path / "review.md"
-    review.write_text("Reviewed full external benchmark artifacts.\n", encoding="utf-8")
+    review.write_text(
+        "Reviewed full external benchmark comparison and faithfulness artifacts.\n",
+        encoding="utf-8",
+    )
 
     report = build_completion_report(
         _args(

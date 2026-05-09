@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from proofrag.evaluation.lihua import load_lihua_qa_csv
+from proofrag.evaluation.lihua import load_lihua_qa_csv, resolve_lihua_sources
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 
 try:
@@ -40,15 +40,11 @@ def _nonempty_file(path: str | None) -> Path | None:
     return candidate
 
 
-def _count_export_rows(path: Path) -> int:
-    adapter = MiniRAGOutputAdapter()
-    return len(adapter.load_export(str(path)))
-
-
 def _check_lihua_data(
     qa_csv: str | None,
     data_dir: str | None,
     min_rows: int,
+    min_source_resolution: float,
 ) -> CompletionGate:
     qa_path = _nonempty_file(qa_csv)
     data_path = _existing_path(data_dir)
@@ -81,12 +77,46 @@ def _check_lihua_data(
                 detail="LiHua data directory contains no source files.",
                 evidence=f"{qa_path}; {data_path}",
             )
+        evidence_ids = sorted(
+            {
+                evidence_id
+                for row in rows
+                for evidence_id in row.evidence_ids
+                if evidence_id
+            }
+        )
+        if not evidence_ids:
+            return CompletionGate(
+                name="full_lihua_world_data",
+                passed=False,
+                detail="LiHua QA CSV has no evidence IDs to resolve.",
+                evidence=f"{qa_path}; {data_path}",
+            )
+        resolution = resolve_lihua_sources(
+            evidence_ids=evidence_ids,
+            data_dir=data_path,
+        )
+        resolved_count = len(resolution.files)
+        resolution_ratio = resolved_count / len(evidence_ids)
+        if resolution_ratio < min_source_resolution:
+            return CompletionGate(
+                name="full_lihua_world_data",
+                passed=False,
+                detail=(
+                    f"Resolved {resolved_count}/{len(evidence_ids)} LiHua evidence IDs "
+                    f"({resolution_ratio:.1%}); expected at least "
+                    f"{min_source_resolution:.1%}."
+                ),
+                evidence=f"{qa_path}; {data_path}",
+            )
         return CompletionGate(
             name="full_lihua_world_data",
             passed=True,
             detail=(
                 f"LiHua QA CSV has {len(rows)} rows and extracted data directory "
-                f"has {len(source_files)} files."
+                f"has {len(source_files)} files; resolved "
+                f"{resolved_count}/{len(evidence_ids)} evidence IDs "
+                f"({resolution_ratio:.1%})."
             ),
             evidence=f"{qa_path}; {data_path}",
         )
@@ -112,7 +142,7 @@ def _check_baseline_export(path: str | None, min_rows: int) -> CompletionGate:
             ),
         )
     try:
-        rows = _count_export_rows(export_path)
+        items = MiniRAGOutputAdapter().load_export(str(export_path))
     except Exception as exc:
         return CompletionGate(
             name="normalized_baseline_export",
@@ -120,12 +150,60 @@ def _check_baseline_export(path: str | None, min_rows: int) -> CompletionGate:
             detail=f"Export exists but failed schema validation: {exc}",
             evidence=str(export_path),
         )
+    rows = len(items)
+    if rows < min_rows:
+        return CompletionGate(
+            name="normalized_baseline_export",
+            passed=False,
+            detail=f"Validated {rows} normalized export rows; expected at least {min_rows}.",
+            evidence=str(export_path),
+        )
+    duplicate_ids = _duplicates(item.id for item in items)
+    if duplicate_ids:
+        return CompletionGate(
+            name="normalized_baseline_export",
+            passed=False,
+            detail=f"Export contains duplicate row IDs: {', '.join(duplicate_ids[:5])}.",
+            evidence=str(export_path),
+        )
+    empty_context_ids = [
+        item.id
+        for item in items
+        if not any(
+            str(context.get("text", "")).strip()
+            for context in item.retrieved_context
+        )
+    ]
+    if empty_context_ids:
+        return CompletionGate(
+            name="normalized_baseline_export",
+            passed=False,
+            detail=(
+                "Export rows must include non-empty retrieved context; missing for "
+                f"{', '.join(empty_context_ids[:5])}."
+            ),
+            evidence=str(export_path),
+        )
     return CompletionGate(
         name="normalized_baseline_export",
-        passed=rows >= min_rows,
-        detail=f"Validated {rows} normalized export rows; expected at least {min_rows}.",
+        passed=True,
+        detail=(
+            f"Validated {rows} normalized export rows with unique IDs "
+            "and non-empty retrieved context."
+        ),
         evidence=str(export_path),
     )
+
+
+def _duplicates(values: Any) -> list[str]:
+    seen: set[str] = set()
+    duplicates: list[str] = []
+    for value in values:
+        text = str(value)
+        if text in seen and text not in duplicates:
+            duplicates.append(text)
+        seen.add(text)
+    return duplicates
 
 
 def _check_result_artifacts(
@@ -201,8 +279,13 @@ def _validate_result_artifact_shapes(
 
 def _validate_review_note(path: Path) -> None:
     text = path.read_text(encoding="utf-8").strip().lower()
+    _reject_placeholder_text(text)
     if "review" not in text or "benchmark" not in text:
         raise ValueError("review note must mention review and benchmark scope")
+    if "comparison" not in text or "faithfulness" not in text:
+        raise ValueError(
+            "review note must mention comparison and faithfulness artifacts"
+        )
 
 
 def _validate_publication_claims(args: argparse.Namespace) -> None:
@@ -294,6 +377,7 @@ def _check_docker_build(
 
 def _validate_docker_evidence(path: Path) -> None:
     text = path.read_text(encoding="utf-8", errors="replace").lower()
+    _reject_placeholder_text(text)
     if "docker build" not in text:
         raise ValueError("evidence must mention docker build")
     if not any(marker in text for marker in ("success", "succeeded", "successfully built")):
@@ -348,10 +432,27 @@ def _check_remote_ci(ci_evidence: str | None, ci_url: str | None) -> CompletionG
 
 def _validate_ci_evidence(path: Path) -> None:
     text = path.read_text(encoding="utf-8", errors="replace").lower()
+    _reject_placeholder_text(text)
     if not any(marker in text for marker in ("github", "actions", "ci")):
         raise ValueError("evidence must mention GitHub Actions or CI")
     if not any(marker in text for marker in ("success", "succeeded", "conclusion: success", '"conclusion": "success"')):
         raise ValueError("evidence must indicate a successful CI conclusion")
+
+
+def _reject_placeholder_text(text: str) -> None:
+    placeholder_markers = (
+        "<paste",
+        "<replace",
+        "replace every placeholder",
+        "owner/repo",
+        "run_id",
+        "approved / rejected / needs rerun",
+        "any additional required jobs",
+        "placeholder",
+        "not valid evidence",
+    )
+    if any(marker in text for marker in placeholder_markers):
+        raise ValueError("template placeholders must be replaced with concrete evidence")
 
 
 def _is_github_actions_run_url(url: str) -> bool:
@@ -364,6 +465,7 @@ def build_completion_report(args: argparse.Namespace) -> dict[str, Any]:
             args.lihua_qa_csv,
             args.lihua_data_dir,
             args.min_lihua_qa_rows,
+            args.min_lihua_source_resolution,
         ),
         _check_baseline_export(args.minirag_export, args.min_baseline_export_rows),
         _check_result_artifacts(
@@ -398,6 +500,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lihua-qa-csv", help="External LiHua-World QA CSV.")
     parser.add_argument("--lihua-data-dir", help="Extracted external LiHua-World data dir.")
     parser.add_argument("--min-lihua-qa-rows", type=int, default=100)
+    parser.add_argument("--min-lihua-source-resolution", type=float, default=0.90)
     parser.add_argument("--minirag-export", help="Normalized MiniRAG/LightRAG JSONL export.")
     parser.add_argument("--min-baseline-export-rows", type=int, default=100)
     parser.add_argument("--comparison-summary", help="Full benchmark comparison JSON summary.")

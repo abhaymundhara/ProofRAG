@@ -43,6 +43,7 @@ def build_gate_command(args: argparse.Namespace) -> list[str]:
         ("--lihua-qa-csv", args.lihua_qa_csv),
         ("--lihua-data-dir", args.lihua_data_dir),
         ("--min-lihua-qa-rows", args.min_lihua_qa_rows),
+        ("--min-lihua-source-resolution", args.min_lihua_source_resolution),
         ("--minirag-export", args.minirag_export),
         ("--min-baseline-export-rows", args.min_baseline_export_rows),
         ("--comparison-summary", args.comparison_summary),
@@ -83,6 +84,7 @@ def build_release_command(args: argparse.Namespace) -> list[str]:
         ("--lihua-qa-csv", args.lihua_qa_csv),
         ("--lihua-data-dir", args.lihua_data_dir),
         ("--min-lihua-qa-rows", args.min_lihua_qa_rows),
+        ("--min-lihua-source-resolution", args.min_lihua_source_resolution),
         ("--minirag-export", args.minirag_export),
         ("--min-baseline-export-rows", args.min_baseline_export_rows),
         ("--comparison-summary", args.comparison_summary),
@@ -115,14 +117,22 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
             name="full_lihua_world_data",
             purpose="Prove evaluation ran against a local full LiHua-World copy, not a toy fixture.",
             paths=_path_tuple(args.lihua_qa_csv, args.lihua_data_dir),
-            validation=f"QA CSV must parse and contain at least {args.min_lihua_qa_rows} rows; data dir must contain source files.",
+            validation=(
+                f"QA CSV must parse and contain at least {args.min_lihua_qa_rows} rows; "
+                f"data dir must contain source files; at least "
+                f"{args.min_lihua_source_resolution:.0%} of evidence IDs must resolve."
+            ),
             status=_status(_path_tuple(args.lihua_qa_csv, args.lihua_data_dir)),
         ),
         EvidenceRequirement(
             name="normalized_baseline_export",
             purpose="Provide MiniRAG or LightRAG outputs in ProofRAG's normalized JSONL schema.",
             paths=_path_tuple(args.minirag_export),
-            validation=f"Export must schema-validate and contain at least {args.min_baseline_export_rows} rows.",
+            validation=(
+                f"Export must schema-validate, contain at least "
+                f"{args.min_baseline_export_rows} rows, use unique row IDs, "
+                "and include non-empty retrieved context."
+            ),
             status=_status(_path_tuple(args.minirag_export)),
         ),
         EvidenceRequirement(
@@ -133,7 +143,10 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
                 args.faithfulness_summary,
                 args.review_note,
             ),
-            validation="Metric JSON files must have compatible totals; review note must mention review and benchmark scope.",
+            validation=(
+                "Metric JSON files must have compatible totals; review note must "
+                "mention review, benchmark, comparison, and faithfulness scope."
+            ),
             status=_status(
                 _path_tuple(
                     args.comparison_summary,
@@ -224,6 +237,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lihua-qa-csv")
     parser.add_argument("--lihua-data-dir")
     parser.add_argument("--min-lihua-qa-rows", type=int, default=100)
+    parser.add_argument("--min-lihua-source-resolution", type=float, default=0.90)
     parser.add_argument("--minirag-export")
     parser.add_argument("--min-baseline-export-rows", type=int, default=100)
     parser.add_argument("--comparison-summary")
