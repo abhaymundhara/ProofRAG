@@ -1,6 +1,5 @@
 import json
 import pytest
-from pathlib import Path
 from tools.external.minirag_exporter import validate_minirag_export_row, run_export
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 

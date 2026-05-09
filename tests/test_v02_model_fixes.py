@@ -1,5 +1,4 @@
 import json
-import pytest
 from unittest.mock import patch, MagicMock
 from proofrag.generation.ollama import OllamaGenerator
 from proofrag.evaluation.answer_metrics import strip_citations, contains_gold_answer

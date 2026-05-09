@@ -8,7 +8,7 @@ accurately reflects the state of the contract, ledger, and report.
 
 from proofrag.contracts.schema import EvidenceContract, EvidenceSlot
 from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
-from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer, SufficiencyReport
+from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
 from proofrag.packing.strict_context import StrictContextPacker
 
 

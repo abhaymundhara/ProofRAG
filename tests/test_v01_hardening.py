@@ -3,7 +3,6 @@ test_v01_hardening.py — Tests for v0.1 hardening (stricter retrieval and suffi
 """
 
 import json
-from pathlib import Path
 from proofrag.contracts.schema import EvidenceContract, EvidenceSlot
 from proofrag.retrieval.dummy import DummyRetriever
 from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer

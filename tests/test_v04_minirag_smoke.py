@@ -1,6 +1,4 @@
 import json
-import pytest
-from pathlib import Path
 from tools.external.minirag_exporter import parse_evidence_field
 from tools.external.check_minirag_ready import check_minirag_ready
 

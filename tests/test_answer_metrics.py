@@ -1,4 +1,8 @@
-from proofrag.evaluation.answer_metrics import normalize_answer, contains_gold_answer
+from proofrag.evaluation.answer_metrics import (
+    contains_gold_answer,
+    is_answer_correct,
+    normalize_answer,
+)
 
 def test_normalize_answer():
     assert normalize_answer("Hello, World!") == "hello world"
@@ -8,35 +12,40 @@ def test_normalize_answer():
     assert normalize_answer(None) == ""
 
 def test_contains_gold_answer():
-    assert contains_gold_answer("The answer is Tom.", "Tom") == True
-    assert contains_gold_answer("Tom asked LiHua.", "tom") == True
-    assert contains_gold_answer("The meeting was on Monday.", "Tuesday") == False
-    assert contains_gold_answer("I don't know.", "Tom") == False
-    assert contains_gold_answer("Tom", "Tom") == True
-    assert contains_gold_answer("The person was Tom Smith.", "Tom") == True
-    assert contains_gold_answer("Tom Smith", "Tom Smith") == True
-
-from proofrag.evaluation.answer_metrics import is_answer_correct
+    assert contains_gold_answer("The answer is Tom.", "Tom")
+    assert contains_gold_answer("Tom asked LiHua.", "tom")
+    assert not contains_gold_answer("The meeting was on Monday.", "Tuesday")
+    assert not contains_gold_answer("I don't know.", "Tom")
+    assert contains_gold_answer("Tom", "Tom")
+    assert contains_gold_answer("The person was Tom Smith.", "Tom")
+    assert contains_gold_answer("Tom Smith", "Tom Smith")
 
 def test_water_tap_typo_normalization():
     # 'water tap in the apartment is broken' should match gold 'water tab in the apartment is broken'
-    assert is_answer_correct("the water tap in the apartment is broken", "the water tab in the apartment is broken") == True
+    assert is_answer_correct(
+        "the water tap in the apartment is broken",
+        "the water tab in the apartment is broken",
+    )
 
 def test_date_variants_normalization():
     # 'January 8, 2026' should match gold '20260108'
-    assert is_answer_correct("January 8, 2026", "20260108") == True
-    assert is_answer_correct("Jan 8, 2026", "20260108") == True
-    assert is_answer_correct("8 January 2026", "20260108") == True
-    assert is_answer_correct("The event is on 20260108.", "20260108") == True
+    assert is_answer_correct("January 8, 2026", "20260108")
+    assert is_answer_correct("Jan 8, 2026", "20260108")
+    assert is_answer_correct("8 January 2026", "20260108")
+    assert is_answer_correct("The event is on 20260108.", "20260108")
 
 def test_source_id_isolation():
     # An answer that only contains 'record_id=minirag-lihua-single-0002-0-src0' should not count as correct for date gold '20260108'
     generated = "[record_id=minirag-lihua-single-0002-0-src0]"
-    assert is_answer_correct(generated, "20260108", source_ids=["20260108"]) == False
-    
+    assert not is_answer_correct(generated, "20260108", source_ids=["20260108"])
+
     generated2 = "Source 20260108_11:00 says hello."
-    assert is_answer_correct(generated2, "20260108", source_ids=["20260108_11:00"]) == False
-    
+    assert not is_answer_correct(
+        generated2,
+        "20260108",
+        source_ids=["20260108_11:00"],
+    )
+
     # But if the natural date is in the answer, it should be correct
     generated3 = "Source 20260108_11:00 says the date is 20260108."
-    assert is_answer_correct(generated3, "20260108", source_ids=["20260108_11:00"]) == True
+    assert is_answer_correct(generated3, "20260108", source_ids=["20260108_11:00"])

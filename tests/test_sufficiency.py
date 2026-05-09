@@ -10,7 +10,6 @@ Key scenarios:
   6. coverage_score computed correctly
 """
 
-import pytest
 
 from proofrag.contracts.schema import EvidenceContract, EvidenceSlot
 from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger

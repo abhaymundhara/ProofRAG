@@ -1,6 +1,4 @@
-import pytest
 import json
-from pathlib import Path
 from proofrag.evaluation.dataset import DatasetLoader
 from proofrag.evaluation.runner import BenchmarkRunner
 from proofrag.evaluation.metrics import calculate_metrics
@@ -26,6 +24,12 @@ def test_dataset_loader_parses_toy_jsonl(tmp_path):
     assert examples[0].id == "q1"
     assert examples[0].contract.slots[0].slot_id == "s1"
     assert examples[0].context[0].source_id == "d1"
+
+def test_toy_benchmark_has_phase0_minimum_size():
+    examples = DatasetLoader().load_jsonl("benchmarks/toy_lihua.jsonl")
+
+    assert len(examples) >= 30
+    assert len({ex.id for ex in examples}) == len(examples)
 
 def test_benchmark_runner_and_metrics():
     # Test indirect-only example blocks answer
@@ -88,3 +92,39 @@ def test_metrics_calculation_logic():
     assert metrics.false_abstain_count == 1
     assert metrics.unsafe_answer_rate == 1/3
     assert metrics.coverage_score_mean == 0.5
+    assert metrics.abstention_rate == 1/3
+    assert metrics.answered_correct_count == 1
+    assert metrics.precision_at_answered == 0.5
+
+def test_metrics_include_optional_latency_and_token_means():
+    results = [
+        {
+            "behavioural_pass": True,
+            "actual_answer_allowed": True,
+            "expected_answer_allowed": True,
+            "answer_correct": True,
+            "coverage_score": 1.0,
+            "latency_ms": 100,
+            "prompt_tokens": 20,
+            "completion_tokens": 5,
+            "total_tokens": 25,
+        },
+        {
+            "behavioural_pass": True,
+            "actual_answer_allowed": False,
+            "expected_answer_allowed": False,
+            "coverage_score": 0.0,
+            "latency_ms": 300,
+            "prompt_tokens": 10,
+            "completion_tokens": 0,
+            "total_tokens": 10,
+        },
+    ]
+
+    metrics = calculate_metrics(results)
+
+    assert metrics.latency_ms_mean == 200
+    assert metrics.prompt_tokens_mean == 15
+    assert metrics.completion_tokens_mean == 2.5
+    assert metrics.total_tokens_mean == 17.5
+    assert metrics.answered_accuracy == 1.0

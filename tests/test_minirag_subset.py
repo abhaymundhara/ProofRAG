@@ -1,6 +1,5 @@
 import csv
 import pytest
-from pathlib import Path
 from tools.external.prepare_minirag_tiny_subset import prepare_tiny_subset, show_type_distribution
 
 @pytest.fixture

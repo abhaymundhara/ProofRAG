@@ -1,7 +1,11 @@
-import pytest
 import json
-from pathlib import Path
-from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter, MiniRAGExportItem
+import pytest
+
+from proofrag.evaluation.minirag_adapter import (
+    LightRAGOutputAdapter,
+    MiniRAGExportItem,
+    MiniRAGOutputAdapter,
+)
 
 @pytest.fixture
 def sample_export_file(tmp_path):
@@ -109,7 +113,7 @@ AdamSmith: Hey Li Hua"
 LiHua: the water tab in the apartment is broken"
 ```
 '''
-    rows = adapter._extract_minirag_source_rows(text)
+    rows = adapter.extract_source_rows(text)
     assert len(rows) == 2
     assert rows[0]["id"] == "0"
     assert "Time: 20260106_15:00" in rows[0]["content"]
@@ -157,3 +161,34 @@ LiHua: just wanted to let you know that the water tab in the apartment is broken
     # Check that record for source 0 exists but doesn't necessarily support the required slots directly
     plumber_record = next(r for r in records if "plumber" in r["text"])
     assert "answer" not in plumber_record["supports_slots"]
+
+
+def test_lightrag_adapter_consumes_same_normalized_export(tmp_path):
+    file_path = tmp_path / "lightrag.jsonl"
+    row = {
+        "id": "light-001",
+        "dataset": "test",
+        "question": "Who asked about the warranty?",
+        "query_type": "factoid",
+        "gold_answer": "Tom",
+        "gold_supporting_sources": ["d1"],
+        "retrieved_context": [
+            {
+                "source_id": "d1",
+                "text": "Tom asked about the warranty.",
+                "metadata": {},
+            }
+        ],
+        "baseline_answer": "Tom asked.",
+        "baseline_method": "lightrag",
+        "baseline_metrics": {},
+    }
+    file_path.write_text(json.dumps(row) + "\n", encoding="utf-8")
+
+    adapter = LightRAGOutputAdapter()
+    item = adapter.load_export(str(file_path))[0]
+    result = adapter.process_item(item)
+
+    assert item.baseline_method == "lightrag"
+    assert result["baseline_method"] == "lightrag"
+    assert result["sufficiency_report"]["answer_allowed"] is True

@@ -1,4 +1,3 @@
-import pytest
 from proofrag.contracts.infer import infer_contract_from_question
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 

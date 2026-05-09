@@ -1,4 +1,3 @@
-import pytest
 from proofrag.evaluation.minirag_experiment import MiniRAGExperimentRunner
 
 def test_runner_consumes_sample_export():

@@ -14,7 +14,8 @@ Verifies that:
 from __future__ import annotations
 
 import json
-import tempfile
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,11 @@ import pytest
 from proofrag.contracts.schema import EvidenceContract, EvidenceSlot
 from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
 from proofrag.evidence.sufficiency import RuleBasedSufficiencyScorer
+from proofrag.evaluation.report import (
+    experiment_summary_markdown,
+    load_experiment_log,
+    summarize_experiment_log,
+)
 from proofrag.logger import ExperimentLogger
 
 
@@ -264,3 +270,87 @@ class TestExperimentLogger:
             answer=answer,
         )
         assert deep_path.exists()
+
+
+def test_experiment_log_summary_aggregates_decisions(tmp_jsonl: Path):
+    logger = ExperimentLogger(output_path=tmp_jsonl)
+    contract, ledger, report, prompt, answer = _make_pipeline()
+    logger.log(
+        question=_QUESTION,
+        contract=contract,
+        ledger=ledger,
+        report=report,
+        packed_prompt=prompt,
+        answer=answer,
+        summary={
+            "retriever_backend": "hybrid",
+            "generator_backend": "dummy",
+            "contract_inference": "adaptive",
+        },
+    )
+    blocked_contract = _make_contract()
+    blocked_ledger = EvidenceLedger(records=[])
+    blocked_report = _scorer.score(blocked_contract, blocked_ledger)
+    logger.log(
+        question="Missing evidence?",
+        contract=blocked_contract,
+        ledger=blocked_ledger,
+        report=blocked_report,
+        packed_prompt=prompt,
+        answer="Insufficient evidence.",
+        summary={
+            "retriever_backend": "bm25",
+            "generator_backend": "dummy",
+            "contract_inference": "demo",
+        },
+    )
+
+    summary = summarize_experiment_log(load_experiment_log(tmp_jsonl))
+
+    assert summary.total_runs == 2
+    assert summary.answer_allowed_count == 1
+    assert summary.abstained_count == 1
+    assert summary.retriever_backends == {"hybrid": 1, "bm25": 1}
+    assert summary.generator_backends == {"dummy": 2}
+    assert summary.missing_slot_counts == {"who_asked": 1}
+    assert "Answer allowed rate" in experiment_summary_markdown(summary)
+
+
+def test_summarize_experiment_log_script_writes_artifacts(tmp_jsonl: Path, tmp_path: Path):
+    logger = ExperimentLogger(output_path=tmp_jsonl)
+    contract, ledger, report, prompt, answer = _make_pipeline()
+    logger.log(
+        question=_QUESTION,
+        contract=contract,
+        ledger=ledger,
+        report=report,
+        packed_prompt=prompt,
+        answer=answer,
+        summary={
+            "retriever_backend": "hybrid",
+            "generator_backend": "dummy",
+            "contract_inference": "adaptive",
+        },
+    )
+    summary_json = tmp_path / "summary.json"
+    table_md = tmp_path / "summary.md"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/summarize_experiment_log.py",
+            "--input",
+            str(tmp_jsonl),
+            "--summary-json",
+            str(summary_json),
+            "--table-md",
+            str(table_md),
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "Wrote experiment summary JSON" in result.stdout
+    assert json.loads(summary_json.read_text(encoding="utf-8"))["total_runs"] == 1
+    assert "ProofRAG Experiment Summary" in table_md.read_text(encoding="utf-8")

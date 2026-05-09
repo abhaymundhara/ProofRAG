@@ -1,4 +1,3 @@
-import pytest
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter, MiniRAGExportItem
 
 def test_event_context_meal_mismatch_allowed():
