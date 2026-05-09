@@ -23,6 +23,17 @@ Use `docs/full_benchmark_review_template.md` when writing the review note
 consumed by `--review-note`. Use `docs/release_evidence_templates.md` when
 recording Docker and CI evidence.
 
+To rerun the conservative current-state readiness audit:
+
+```bash
+python scripts/audit_completion_readiness.py \
+  --output-json experiments/results/completion_readiness_audit.json \
+  --output-md experiments/results/completion_readiness_audit.md
+```
+
+This command exits non-zero until both local artifacts and external completion
+gates are ready.
+
 ## External Completion Gates
 
 The local implementation checks are separate from the external evidence needed

@@ -34,10 +34,13 @@ def test_release_checks_dry_run_lists_core_gates(tmp_path: Path):
         "package_build",
         "distribution_contents",
         "roadmap_artifact_matrix",
+        "completion_readiness_audit",
         "external_completion_gates",
     } <= names
     external = next(entry for entry in manifest if entry["name"] == "external_completion_gates")
     assert external["expected_exit_codes"] == [0, 1]
+    audit = next(entry for entry in manifest if entry["name"] == "completion_readiness_audit")
+    assert audit["expected_exit_codes"] == [0, 1]
 
 
 def test_release_checks_can_require_external_gates(tmp_path: Path):
@@ -59,6 +62,9 @@ def test_release_checks_can_require_external_gates(tmp_path: Path):
     external = next(entry for entry in manifest if entry["name"] == "external_completion_gates")
     assert external["required"] is True
     assert external["expected_exit_codes"] == [0]
+    audit = next(entry for entry in manifest if entry["name"] == "completion_readiness_audit")
+    assert audit["required"] is True
+    assert audit["expected_exit_codes"] == [0]
 
 
 def test_release_checks_passes_external_gate_artifact_args(tmp_path: Path):
@@ -111,6 +117,14 @@ def test_release_checks_passes_external_gate_artifact_args(tmp_path: Path):
     assert "--docker-evidence" in command
     assert "docker.txt" in command
     assert "--ci-url" in command
+    audit = next(entry for entry in manifest if entry["name"] == "completion_readiness_audit")
+    audit_command = audit["command"]
+    assert "--lihua-qa-csv" in audit_command
+    assert "qa.csv" in audit_command
+    assert "--minirag-export" in audit_command
+    assert "export.jsonl" in audit_command
+    assert "--docker-evidence" in audit_command
+    assert "--ci-url" in audit_command
 
 
 def test_release_checks_passes_publication_claim_threshold_args(tmp_path: Path):

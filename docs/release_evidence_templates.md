@@ -68,3 +68,6 @@ Checked jobs:
 
 The completion gate requires an evidence file indicating successful CI. A run
 URL is useful supporting context, but a URL by itself is not accepted.
+The repository CI writes this file into the uploaded `proofrag-release-evidence`
+artifact on the Python 3.11 lane after `scripts/run_local_release_checks.py`
+passes.

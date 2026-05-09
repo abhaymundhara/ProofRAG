@@ -42,6 +42,7 @@ def build_release_commands(args: argparse.Namespace) -> list[ReleaseCommand]:
     dist_dir = output_dir / "dist"
     reproduction_dir = output_dir / "reproducible"
     completion_report = output_dir / "completion_gates.json"
+    readiness_report = output_dir / "completion_readiness_audit.json"
     cli_output = output_dir / "cli_smoke.jsonl"
 
     commands = [
@@ -136,6 +137,20 @@ def build_release_commands(args: argparse.Namespace) -> list[ReleaseCommand]:
             detail="Prompt-to-artifact roadmap checklist.",
         ),
         ReleaseCommand(
+            name="completion_readiness_audit",
+            command=_readiness_audit_args(
+                args,
+                readiness_report,
+                output_dir / "completion_readiness_audit.md",
+            ),
+            required=bool(args.require_external_gates),
+            expected_exit_codes=(0,) if args.require_external_gates else (0, 1),
+            detail=(
+                "Combined local roadmap and external superiority readiness audit. "
+                "Exit 1 is expected unless external evidence is supplied."
+            ),
+        ),
+        ReleaseCommand(
             name="external_completion_gates",
             command=_completion_gate_args(args, completion_report),
             required=bool(args.require_external_gates),
@@ -183,6 +198,48 @@ def _completion_gate_args(args: argparse.Namespace, output_json: Path) -> list[s
         "scripts/check_completion_gates.py",
         "--output-json",
         str(output_json),
+    ]
+    optional_flags = [
+        ("--lihua-qa-csv", args.lihua_qa_csv),
+        ("--lihua-data-dir", args.lihua_data_dir),
+        ("--min-lihua-qa-rows", args.min_lihua_qa_rows),
+        ("--min-lihua-source-resolution", args.min_lihua_source_resolution),
+        ("--minirag-export", args.minirag_export),
+        ("--min-baseline-export-rows", args.min_baseline_export_rows),
+        ("--comparison-summary", args.comparison_summary),
+        ("--faithfulness-summary", args.faithfulness_summary),
+        ("--review-note", args.review_note),
+        ("--docker-evidence", args.docker_evidence),
+        ("--ci-evidence", args.ci_evidence),
+        ("--ci-url", args.ci_url),
+        ("--docker-build-tag", args.docker_build_tag),
+        ("--docker-build-context", args.docker_build_context),
+        ("--claim-min-total", args.claim_min_total),
+        ("--claim-max-accuracy-drop", args.claim_max_accuracy_drop),
+        ("--claim-min-precision-at-answered", args.claim_min_precision_at_answered),
+        ("--claim-max-unsafe-allow-rate", args.claim_max_unsafe_allow_rate),
+        ("--claim-min-groundedness-delta", args.claim_min_groundedness_delta),
+        ("--claim-max-unsupported-claim-ratio", args.claim_max_unsupported_claim_ratio),
+        ("--claim-alpha", args.claim_alpha),
+    ]
+    for flag, value in optional_flags:
+        if value is not None:
+            command.extend([flag, str(value)])
+    if args.check_docker_build:
+        command.append("--check-docker-build")
+    if args.require_significance:
+        command.append("--require-claim-significance")
+    return command
+
+
+def _readiness_audit_args(args: argparse.Namespace, output_json: Path, output_md: Path) -> list[str]:
+    command = [
+        sys.executable,
+        "scripts/audit_completion_readiness.py",
+        "--output-json",
+        str(output_json),
+        "--output-md",
+        str(output_md),
     ]
     optional_flags = [
         ("--lihua-qa-csv", args.lihua_qa_csv),

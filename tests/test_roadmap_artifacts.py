@@ -29,10 +29,12 @@ def test_roadmap_artifact_report_maps_all_phases():
         for row in report["requirements"]
         if row["requirement"] == "Quantified MiniRAG superiority claims"
     )
+    assert "scripts/audit_completion_readiness.py" in quantified["artifacts"]
     assert "scripts/init_external_evidence_bundle.py" in quantified["artifacts"]
     assert "scripts/write_external_evidence_manifest.py" in quantified["artifacts"]
     assert "docs/external_evidence_checklist.md" in quantified["artifacts"]
     assert "docs/full_benchmark_review_template.md" in quantified["artifacts"]
+    assert "tests/test_completion_readiness_audit.py" in quantified["verification"]
     assert "tests/test_external_evidence_manifest.py" in quantified["verification"]
     assert "tests/test_external_evidence_bundle.py" in quantified["verification"]
 
@@ -62,6 +64,7 @@ def test_roadmap_artifact_cli_writes_json_and_markdown(tmp_path: Path):
     assert "ProofRAG Roadmap Artifact Matrix" in markdown
     assert "Quantified MiniRAG superiority claims" in markdown
     assert "scripts/write_external_evidence_manifest.py" in markdown
+    assert "scripts/audit_completion_readiness.py" in markdown
     assert "scripts/init_external_evidence_bundle.py" in markdown
     assert "docs/external_evidence_checklist.md" in markdown
     assert "docs/full_benchmark_review_template.md" in markdown

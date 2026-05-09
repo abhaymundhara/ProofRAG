@@ -333,6 +333,9 @@ Use that artifact, or a saved `gh run view --json conclusion` output, as
 `--ci-evidence`; a run URL alone is only supporting context.
 Use `scripts/write_external_evidence_manifest.py` to generate a reviewer-facing
 artifact checklist plus the exact gate and release commands for those paths.
+Use `scripts/audit_completion_readiness.py` for the top-level current-state
+audit that combines local roadmap artifacts with the live external completion
+gates.
 The completion gate validates both artifact presence and the configured
 publication-claim thresholds before setting `ready_for_superiority_claim=true`.
 

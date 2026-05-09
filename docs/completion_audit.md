@@ -38,13 +38,13 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 245 tests, 2 third-party deprecation warnings.
+- `pytest` passed: 247 tests, 2 third-party deprecation warnings.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.
 - `python -m build --sdist --wheel --outdir /tmp/proofrag_dist_local --no-isolation` built source and wheel distributions.
 - `python scripts/verify_distribution_contents.py --dist-dir /tmp/proofrag_dist_local` verified that distribution artifacts include reproducibility assets.
-- `python scripts/run_local_release_checks.py --output-dir /tmp/proofrag_release_checks_current` passed all local gates and recorded external completion gates as `blocked_expected`.
+- `python scripts/run_local_release_checks.py --output-dir /tmp/proofrag_release_checks_with_readiness_audit` passed all local gates and recorded both `completion_readiness_audit` and external completion gates as `blocked_expected`.
 - `.github/workflows/ci.yml` defines Python 3.10/3.11/3.12 CI gates for Ruff,
   mypy, pytest, toy benchmark, reproduction smoke, and package build.
 - `docs/results_snapshot.md` records the local 10-question LiHua single-hop
@@ -53,6 +53,8 @@ generated and reviewed.
   metrics: MiniRAG 1.4% mean groundedness vs MiniRAG+ProofRAG 27.1%.
 - `scripts/check_completion_gates.py` provides a fail-closed JSON readiness
   check for the remaining external publication gates.
+- `scripts/audit_completion_readiness.py` provides a fail-closed combined
+  audit over local roadmap artifacts and live external completion gates.
 - `scripts/validate_publication_claims.py` provides a fail-closed metric
   threshold check for full benchmark superiority claims.
 - `scripts/run_local_release_checks.py` records local source-quality,
@@ -145,6 +147,14 @@ For local release evidence, run:
 ```bash
 python scripts/run_local_release_checks.py \
   --output-dir experiments/results/local_release_checks
+```
+
+For the combined current-state readiness audit, run:
+
+```bash
+python scripts/audit_completion_readiness.py \
+  --output-json experiments/results/completion_readiness_audit.json \
+  --output-md experiments/results/completion_readiness_audit.md
 ```
 
 For the prompt-to-artifact checklist, see `docs/roadmap_artifact_matrix.md` or

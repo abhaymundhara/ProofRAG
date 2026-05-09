@@ -40,6 +40,7 @@ REQUIRED_SDIST_PATHS = (
     "scripts/run_ablation.py",
     "scripts/score_faithfulness.py",
     "scripts/summarize_experiment_log.py",
+    "scripts/audit_completion_readiness.py",
     "scripts/init_external_evidence_bundle.py",
     "scripts/write_external_evidence_manifest.py",
     "scripts/reproduce_paper_results.sh",
@@ -47,6 +48,7 @@ REQUIRED_SDIST_PATHS = (
     "scripts/validate_publication_claims.py",
     "tools/external/minirag_exporter.py",
     "tests/test_release_checks.py",
+    "tests/test_completion_readiness_audit.py",
     "tests/test_external_evidence_bundle.py",
     "proofrag/py.typed",
 )

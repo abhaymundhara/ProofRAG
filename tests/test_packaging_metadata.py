@@ -54,6 +54,8 @@ def test_completion_audit_documents_open_gates():
     assert "Docker image build unverified" in audit
     assert "Docker daemon socket" in audit
     assert "python -m ruff check proofrag scripts tests" in audit
+    assert "scripts/audit_completion_readiness.py" in audit
+    assert "completion_readiness_audit" in audit
 
 
 def test_results_snapshot_keeps_claim_boundary():
@@ -79,6 +81,8 @@ def test_ci_workflow_runs_release_gates():
     assert "python -m build --sdist --wheel --outdir /tmp/proofrag_dist_ci" in workflow
     assert "scripts/verify_distribution_contents.py --dist-dir /tmp/proofrag_dist_ci" in workflow
     assert "scripts/run_local_release_checks.py --output-dir /tmp/proofrag_release_checks_ci" in workflow
+    assert "github_actions_success.txt" in workflow
+    assert "Conclusion: success" in workflow
     assert "actions/upload-artifact@v4" in workflow
     assert "proofrag-release-evidence" in workflow
 
@@ -91,5 +95,6 @@ def test_readme_documents_release_evidence_path():
     assert "docs/reproducibility.md" in readme
     assert "docs/external_evidence_checklist.md" in readme
     assert "scripts/init_external_evidence_bundle.py" in readme
+    assert "scripts/audit_completion_readiness.py" in readme
     assert ".template` files are intentionally rejected" in readme
     assert "proofrag-release-evidence" in readme

@@ -149,6 +149,7 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
         requirement="Quantified MiniRAG superiority claims",
         artifacts=(
             "scripts/check_completion_gates.py",
+            "scripts/audit_completion_readiness.py",
             "scripts/validate_publication_claims.py",
             "scripts/init_external_evidence_bundle.py",
             "scripts/write_external_evidence_manifest.py",
@@ -158,6 +159,7 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
         ),
         verification=(
             "tests/test_completion_gates.py",
+            "tests/test_completion_readiness_audit.py",
             "tests/test_publication_claims.py",
             "tests/test_external_evidence_manifest.py",
             "tests/test_external_evidence_bundle.py",

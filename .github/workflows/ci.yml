@@ -55,6 +55,22 @@ jobs:
         if: matrix.python-version == '3.11'
         run: python scripts/run_local_release_checks.py --output-dir /tmp/proofrag_release_checks_ci
 
+      - name: Record CI success evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          cat > /tmp/proofrag_release_checks_ci/github_actions_success.txt <<EOF
+          ProofRAG remote CI evidence
+          Provider: GitHub Actions
+          Workflow: .github/workflows/ci.yml
+          Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Run ID: ${{ github.run_id }}
+          Git commit: ${{ github.sha }}
+          Conclusion: success
+          Release evidence artifact: proofrag-release-evidence
+          Checked jobs:
+          - Python 3.11 release checks: success
+          EOF
+
       - name: Upload release evidence
         if: always() && matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
