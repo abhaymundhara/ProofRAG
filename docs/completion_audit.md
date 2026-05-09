@@ -38,7 +38,7 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 228 tests, 2 third-party deprecation warnings.
+- `pytest` passed: 231 tests, 2 third-party deprecation warnings.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.
@@ -102,6 +102,9 @@ python scripts/check_completion_gates.py \
 
 On a Docker-enabled machine, `--check-docker-build` can be used instead of a
 pre-written `--docker-evidence` file.
+
+A reviewer-facing checklist and exact validation commands can be generated with
+`scripts/write_external_evidence_manifest.py` once artifact paths are known.
 
 The completion gate defaults to at least 100 LiHua QA rows and 100 normalized
 baseline-export rows, so the bundled smoke fixtures cannot satisfy full

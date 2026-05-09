@@ -52,6 +52,23 @@ fixture.
 Docker evidence must mention a successful `docker build`; CI evidence must be a
 GitHub Actions run URL or a file indicating a successful CI conclusion.
 
+To produce a reviewer-facing checklist and copyable validation commands from
+the artifact paths, write an external evidence manifest:
+
+```bash
+python scripts/write_external_evidence_manifest.py \
+  --lihua-qa-csv path/to/LiHua-World/qa/query_set.csv \
+  --lihua-data-dir path/to/LiHua-World/data \
+  --minirag-export experiments/results/full_minirag_export.jsonl \
+  --comparison-summary experiments/results/full_comparison_summary.json \
+  --faithfulness-summary experiments/results/full_faithfulness_summary.json \
+  --review-note experiments/results/full_benchmark_review.md \
+  --docker-evidence experiments/results/docker_build.txt \
+  --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  --output-json experiments/results/external_evidence_manifest.json \
+  --output-md experiments/results/external_evidence_manifest.md
+```
+
 ## Tests
 
 ```bash

@@ -33,6 +33,7 @@ REQUIRED_SDIST_PATHS = (
     "scripts/run_ablation.py",
     "scripts/score_faithfulness.py",
     "scripts/summarize_experiment_log.py",
+    "scripts/write_external_evidence_manifest.py",
     "scripts/reproduce_paper_results.sh",
     "scripts/check_roadmap_artifacts.py",
     "scripts/validate_publication_claims.py",

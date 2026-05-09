@@ -314,6 +314,8 @@ When full external LiHua/MiniRAG artifacts exist, add
 comparison/faithfulness/review, Docker, CI, and claim-threshold flags shown in
 [docs/reproducibility.md](docs/reproducibility.md). Remote CI uploads the same
 release evidence bundle as `proofrag-release-evidence` on the Python 3.11 lane.
+Use `scripts/write_external_evidence_manifest.py` to generate a reviewer-facing
+artifact checklist plus the exact gate and release commands for those paths.
 
 ---
 
@@ -330,7 +332,7 @@ MiniRAG and LightRAG when they use the normalized JSONL export schema.
   ```bash
   python scripts/run_minirag_adapter_demo.py
   ```
-- **Next Steps**: Future work involves a `minirag_exporter.py` script (external) that calls the actual MiniRAG library with `only_need_context=True`.
+- **Exporter Helper**: `tools/external/minirag_exporter.py` validates the normalized export schema and can call an external MiniRAG checkout with `only_need_context=True` when that dependency is available.
 
 ---
 
