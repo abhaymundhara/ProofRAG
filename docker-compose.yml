@@ -1,0 +1,16 @@
+services:
+  proofrag-api:
+    build:
+      context: .
+    image: proofrag:local
+    ports:
+      - "8000:8000"
+    environment:
+      PROOFRAG_CONFIG: /app/configs/default.yaml
+    command:
+      - uvicorn
+      - proofrag.api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"

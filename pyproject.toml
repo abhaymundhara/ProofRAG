@@ -7,7 +7,7 @@ name = "proofrag"
 version = "0.1.0"
 description = "ProofRAG — evidence-contracted RAG for small language models."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.10"
 
 authors = [
@@ -20,7 +20,6 @@ classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -34,9 +33,36 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+]
+transformers = [
+    "transformers>=4.40",
+    "torch",
+]
+faiss = [
+    "faiss-cpu>=1.8",
+    "numpy>=1.24",
+]
+chroma = [
+    "chromadb>=0.5",
+]
+lancedb = [
+    "lancedb>=0.12",
+]
+vector = [
+    "faiss-cpu>=1.8",
+    "numpy>=1.24",
+    "chromadb>=0.5",
+    "lancedb>=0.12",
+]
 dev = [
     "pytest>=8.0",
     "pytest-cov",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "build>=1.2",
 ]
 
 [project.scripts]
@@ -49,6 +75,10 @@ include = ["proofrag*"]
 [tool.setuptools.package-data]
 # Include the bundled example corpus used by DummyRetriever.
 "*" = ["examples/*.json", "experiments/results/*.jsonl"]
+proofrag = ["py.typed"]
+
+[tool.setuptools.data-files]
+"share/proofrag/configs" = ["configs/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -57,3 +87,11 @@ addopts = "-v"
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["proofrag"]
+ignore_missing_imports = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_unused_ignores = true

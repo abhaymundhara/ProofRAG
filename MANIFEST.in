@@ -1,0 +1,23 @@
+include README.md
+include pyproject.toml
+include Dockerfile
+include docker-compose.yml
+include .dockerignore
+recursive-include configs *.yaml
+recursive-include benchmarks *.jsonl
+recursive-include examples *.json
+recursive-include docs *.md *.svg
+recursive-include scripts *.py *.sh
+recursive-include tools *.py *.md
+recursive-include tests *.py
+recursive-include proofrag py.typed
+prune experiments
+prune scratch
+prune .git
+prune .github
+prune .omx
+prune .pytest_cache
+prune .mypy_cache
+prune .ruff_cache
+global-exclude __pycache__/*
+global-exclude *.py[cod]

@@ -1,0 +1,24 @@
+retriever:
+  backend: dummy
+  context_path: null
+  top_k: 5
+  candidate_k: null
+  iterative: false
+  max_rounds: 2
+
+generator:
+  backend: dummy
+  model: qwen3.5:4b
+  base_url: http://localhost:11434
+  api_key: null
+  timeout: 120
+  temperature: 0.0
+  max_tokens: 256
+  endpoint_mode: chat
+
+contract:
+  inference: demo
+
+logging:
+  output_path: experiments/results/run_001.jsonl
+  include_packed_prompt: true
