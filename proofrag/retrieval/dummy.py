@@ -17,6 +17,7 @@ from pathlib import Path
 
 from proofrag.contracts.schema import EvidenceContract
 from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
+from proofrag.retrieval.base import BaseRetriever
 
 
 # Resolve the examples/context.json path relative to the package root.
@@ -24,7 +25,7 @@ from proofrag.evidence.ledger import EvidenceRecord, EvidenceLedger
 _CONTEXT_FILE = Path(__file__).resolve().parents[2] / "examples" / "context.json"
 
 
-class DummyRetriever:
+class DummyRetriever(BaseRetriever):
     """Keyword-based retriever backed by ``examples/context.json``.
 
     Retrieval logic:
@@ -64,7 +65,6 @@ class DummyRetriever:
         """
         docs = self._load_docs()
         self.total_docs = len(docs)
-        question_tokens = self._tokenise(question)
 
         records: list[EvidenceRecord] = []
 

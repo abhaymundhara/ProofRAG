@@ -1,7 +1,7 @@
 import json
 import urllib.request
 import urllib.error
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from .base import BaseGenerator
 
 class OllamaGenerator(BaseGenerator):
