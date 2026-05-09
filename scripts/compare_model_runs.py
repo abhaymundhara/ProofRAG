@@ -1,8 +1,6 @@
 import argparse
 import json
-import sys
 from pathlib import Path
-from typing import List, Dict
 
 def main():
     parser = argparse.ArgumentParser(description="Compare multiple ProofRAG model benchmark runs")

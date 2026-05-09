@@ -1,8 +1,6 @@
 import argparse
 import subprocess
 import sys
-import os
-from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description="Run the real tiny MiniRAG smoke test pipeline")

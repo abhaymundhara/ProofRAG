@@ -16,7 +16,7 @@ def main():
     args = parser.parse_args()
     
     runner = MiniRAGExperimentRunner()
-    print(f"Running ProofRAG-over-MiniRAG experiment...")
+    print("Running ProofRAG-over-MiniRAG experiment...")
     print(f"Input:  {args.input}")
     print(f"Output: {args.output}")
     

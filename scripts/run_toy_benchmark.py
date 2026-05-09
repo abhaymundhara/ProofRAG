@@ -2,11 +2,14 @@
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).resolve().parents[1]
-sys.path.append(str(project_root))
+from proofrag.evaluation import (
+    BenchmarkRunner,
+    DatasetLoader,
+    calculate_metrics,
+    print_benchmark_report,
+)
 
-from proofrag.evaluation import DatasetLoader, BenchmarkRunner, calculate_metrics, print_benchmark_report
+project_root = Path(__file__).resolve().parents[1]
 
 def main():
     benchmark_file = project_root / "benchmarks" / "toy_lihua.jsonl"
