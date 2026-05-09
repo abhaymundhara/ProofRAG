@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from proofrag.contracts.schema import EvidenceContract, EvidenceSlot
 from proofrag.evidence.ledger import EvidenceRecord
 

@@ -1,10 +1,8 @@
-import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
-from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter, MiniRAGExportItem
-from proofrag.evaluation.metrics import BenchmarkMetrics, calculate_metrics
+from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 
 
 class MiniRAGExperimentResult(BaseModel):

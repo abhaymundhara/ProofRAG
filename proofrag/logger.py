@@ -61,6 +61,8 @@ class ExperimentLogger:
         report: "SufficiencyReport",
         packed_prompt: str,
         answer: str,
+        run_config: dict | None = None,
+        summary: dict | None = None,
     ) -> str:
         """Append one experiment record and return the run_id.
 
@@ -71,6 +73,8 @@ class ExperimentLogger:
             report:        The SufficiencyReport from the scorer.
             packed_prompt: The full prompt string produced by the packer.
             answer:        The generated (or placeholder) answer.
+            run_config:    Optional runtime configuration snapshot.
+            summary:       Optional compact metrics/decision summary.
 
         Returns:
             The ``run_id`` string that uniquely identifies this record.
@@ -85,6 +89,8 @@ class ExperimentLogger:
             "sufficiency": report.model_dump(),
             "packed_prompt": packed_prompt,
             "answer": answer,
+            "run_config": run_config or {},
+            "summary": summary or {},
         }
         with open(self._path, "a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, ensure_ascii=False) + "\n")
