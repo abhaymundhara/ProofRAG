@@ -5,12 +5,12 @@ Usage:
     python -m proofrag.cli ask --question "Who asked LiHua about the laptop warranty issue?"
 
 The ``ask`` command runs the full ProofRAG pipeline end-to-end:
-  1. Build a hardcoded EvidenceContract for the question.
-  2. Retrieve evidence via DummyRetriever.
+  1. Infer or build an EvidenceContract for the question.
+  2. Retrieve evidence via the configured retriever backend.
   3. Build an EvidenceLedger.
   4. Score sufficiency with RuleBasedSufficiencyScorer.
   5. Pack the strict context prompt.
-  6. Generate a placeholder answer with DummyGenerator.
+  6. Generate with the configured generator backend, or abstain when required.
   7. Print all artefacts to stdout.
 """
 

@@ -58,6 +58,7 @@ def test_manifest_includes_all_supplied_external_paths():
             faithfulness_summary="results/faithfulness_summary.json",
             review_note="results/review.md",
             docker_evidence="results/docker.txt",
+            ci_evidence="results/ci.txt",
             ci_url="https://github.com/example/proofrag/actions/runs/123",
         )
     )
@@ -66,6 +67,7 @@ def test_manifest_includes_all_supplied_external_paths():
     gate_shell = manifest["commands"]["completion_gate_shell"]
     release_shell = manifest["commands"]["full_release_shell"]
     assert "--lihua-qa-csv data/query_set.csv" in gate_shell
+    assert "--ci-evidence results/ci.txt" in gate_shell
     assert "--ci-url https://github.com/example/proofrag/actions/runs/123" in gate_shell
     assert "--claim-min-total 100" in gate_shell
     assert "--claim-max-unsafe-allow-rate 0.0" in gate_shell
@@ -73,6 +75,18 @@ def test_manifest_includes_all_supplied_external_paths():
     assert "--claim-max-unsupported-claim-ratio 0.75" in gate_shell
     assert "--claim-comparison-summary results/comparison_summary.json" in release_shell
     assert "--require-significance" in release_shell
+
+
+def test_manifest_treats_ci_url_without_evidence_as_missing():
+    manifest = build_manifest(
+        _args(ci_url="https://github.com/example/proofrag/actions/runs/123")
+    )
+
+    ci_requirement = next(
+        item for item in manifest["requirements"] if item["name"] == "remote_ci_verified"
+    )
+    assert manifest["status"] == "missing_evidence"
+    assert ci_requirement["status"] == "missing"
 
 
 def test_manifest_cli_writes_json_and_markdown(tmp_path: Path):

@@ -97,6 +97,8 @@ def test_completion_gates_pass_with_concrete_artifacts(tmp_path: Path):
     review.write_text("Reviewed full external benchmark artifacts.\n", encoding="utf-8")
     docker_evidence = tmp_path / "docker.txt"
     docker_evidence.write_text("docker build succeeded\n", encoding="utf-8")
+    ci_evidence = tmp_path / "ci.txt"
+    ci_evidence.write_text("GitHub Actions conclusion: success\n", encoding="utf-8")
 
     report = build_completion_report(
         _args(
@@ -111,6 +113,7 @@ def test_completion_gates_pass_with_concrete_artifacts(tmp_path: Path):
             review_note=str(review),
             claim_min_total=1,
             docker_evidence=str(docker_evidence),
+            ci_evidence=str(ci_evidence),
             ci_url="https://github.com/example/proofrag/actions/runs/1",
         )
     )
@@ -155,6 +158,18 @@ def test_completion_gates_accept_successful_ci_evidence_file(tmp_path: Path):
         item for item in report["gates"] if item["name"] == "remote_ci_verified"
     )
     assert gate["passed"] is True
+
+
+def test_completion_gates_reject_actions_url_without_success_evidence(tmp_path: Path):
+    report = build_completion_report(
+        _args(tmp_path, ci_url="https://github.com/example/proofrag/actions/runs/1")
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "remote_ci_verified"
+    )
+    assert gate["passed"] is False
+    assert "URL alone does not prove" in gate["detail"]
 
 
 def test_completion_gates_reject_tiny_lihua_fixture_as_full_data(tmp_path: Path):

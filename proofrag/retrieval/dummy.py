@@ -5,7 +5,8 @@ This retriever is intentionally simple: it loads a static JSON file and
 matches documents to evidence slots by checking whether any keyword from the
 question (or the slot description) appears in the document text.
 
-It is a development stub — replace with a real retriever in v0.2+.
+It is kept as a deterministic fixture backend for tests and examples. Production
+or research runs should use BM25, hybrid, FAISS, Chroma, or LanceDB retrieval.
 """
 
 from __future__ import annotations

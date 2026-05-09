@@ -152,9 +152,12 @@ def build_manifest(args: argparse.Namespace) -> dict[str, Any]:
         EvidenceRequirement(
             name="remote_ci_verified",
             purpose="Prove the release checks ran in remote GitHub Actions.",
-            paths=_path_tuple(args.ci_evidence or args.ci_url),
-            validation="Evidence must indicate successful GitHub Actions/CI, or CI URL must be a GitHub Actions run URL.",
-            status="provided" if args.ci_evidence or args.ci_url else "missing",
+            paths=_path_tuple(args.ci_evidence, args.ci_url),
+            validation=(
+                "Evidence file must indicate successful GitHub Actions/CI; "
+                "the GitHub Actions run URL is optional supporting context."
+            ),
+            status="provided" if args.ci_evidence else "missing",
         ),
     ]
     gate_command = build_gate_command(args)

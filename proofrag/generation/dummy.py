@@ -1,8 +1,8 @@
 """
 dummy.py — DummyGenerator.
 
-Returns a fixed placeholder string.  In v0.2+ this will be replaced by a
-real LLM call (e.g. via the transformers or openai client).
+Returns a fixed string for deterministic tests and smoke runs. Production
+pipelines should use the Ollama, OpenAI-compatible, or transformers backends.
 """
 
 from __future__ import annotations
@@ -19,15 +19,15 @@ class DummyGenerator(BaseGenerator):
         self._placeholder = placeholder or self.DEFAULT_RESPONSE
 
     def generate(self, prompt: str) -> str:
-        """Accept a packed prompt and return a placeholder answer.
+        """Accept a packed prompt and return the configured fixed answer.
 
         Args:
             prompt: The evidence-gated prompt produced by StrictContextPacker.
 
         Returns:
-            A placeholder string (real LLM response in future versions).
+            A deterministic string for tests and offline smoke runs.
         """
-        # The prompt parameter is intentionally unused in v0.1 — the signature
-        # matches the interface that real generators will implement.
+        # The prompt parameter is intentionally unused; the signature matches
+        # the shared generator interface.
         _ = prompt
         return self._placeholder

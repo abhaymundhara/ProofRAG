@@ -40,6 +40,7 @@ python scripts/check_completion_gates.py \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
   --review-note experiments/results/full_benchmark_review.md \
   --docker-evidence experiments/results/docker_build.txt \
+  --ci-evidence experiments/results/github_actions_success.txt \
   --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   --claim-min-total 100 \
   --claim-max-accuracy-drop 0.05 \
@@ -56,10 +57,11 @@ baseline-export rows. Use `--min-lihua-qa-rows` and
 fixture.
 
 Docker evidence must mention a successful `docker build`; CI evidence must be a
-GitHub Actions run URL or a file indicating a successful CI conclusion. The
-completion gate also applies publication-claim thresholds to the comparison and
-faithfulness summaries, so schema-valid weak metrics cannot mark the repository
-ready for superiority claims.
+file indicating a successful GitHub Actions or CI conclusion. A GitHub Actions
+run URL is useful supporting context, but it is not accepted as success evidence
+by itself. The completion gate also applies publication-claim thresholds to the
+comparison and faithfulness summaries, so schema-valid weak metrics cannot mark
+the repository ready for superiority claims.
 
 To produce a reviewer-facing checklist and copyable validation commands from
 the artifact paths, write an external evidence manifest:
@@ -73,6 +75,7 @@ python scripts/write_external_evidence_manifest.py \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
   --review-note experiments/results/full_benchmark_review.md \
   --docker-evidence experiments/results/docker_build.txt \
+  --ci-evidence experiments/results/github_actions_success.txt \
   --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   --output-json experiments/results/external_evidence_manifest.json \
   --output-md experiments/results/external_evidence_manifest.md
@@ -117,6 +120,7 @@ python scripts/run_local_release_checks.py \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
   --review-note experiments/results/full_benchmark_review.md \
   --docker-evidence experiments/results/docker_build.txt \
+  --ci-evidence experiments/results/github_actions_success.txt \
   --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID \
   --claim-comparison-summary experiments/results/full_comparison_summary.json \
   --claim-faithfulness-summary experiments/results/full_faithfulness_summary.json \

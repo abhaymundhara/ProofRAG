@@ -71,13 +71,15 @@ proofrag/
   evidence/         EvidenceRecord, EvidenceLedger, SufficiencyReport,
                     RuleBasedSufficiencyScorer
   packing/          StrictContextPacker — assembles the evidence-gated prompt
-  retrieval/        DummyRetriever — keyword matching over examples/context.json
+  retrieval/        DummyRetriever — deterministic fixture backend
                    BM25Retriever — dependency-light lexical retrieval
                    HybridRetriever — BM25 candidates + contract-aware reranking
+                   FAISS/Chroma/LanceDB — optional vector retrieval adapters
                    ContractGapRetriever — iterative missing-slot retrieval
-  generation/       DummyGenerator — placeholder, returns fixed string
+  generation/       DummyGenerator — deterministic fixture backend
                    OllamaGenerator — optional local model backend
                    OpenAICompatibleGenerator — SDK-free /chat/completions backend
+                   TransformersGenerator — optional local transformers backend
   config.py         Pydantic runtime settings loaded from YAML/JSON
   cli.py            Typer CLI — `python -m proofrag.cli ask --question "..."`
 ```
@@ -314,6 +316,8 @@ When full external LiHua/MiniRAG artifacts exist, add
 comparison/faithfulness/review, Docker, CI, and claim-threshold flags shown in
 [docs/reproducibility.md](docs/reproducibility.md). Remote CI uploads the same
 release evidence bundle as `proofrag-release-evidence` on the Python 3.11 lane.
+Use that artifact, or a saved `gh run view --json conclusion` output, as
+`--ci-evidence`; a run URL alone is only supporting context.
 Use `scripts/write_external_evidence_manifest.py` to generate a reviewer-facing
 artifact checklist plus the exact gate and release commands for those paths.
 The completion gate validates both artifact presence and the configured

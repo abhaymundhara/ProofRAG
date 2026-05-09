@@ -319,12 +319,25 @@ def _check_remote_ci(ci_evidence: str | None, ci_url: str | None) -> CompletionG
             detail="Remote CI URL must be a GitHub Actions run URL.",
             evidence=ci_url,
         )
-    if evidence_path or ci_url:
+    if evidence_path:
+        evidence = str(evidence_path)
+        if ci_url:
+            evidence = f"{evidence}; {ci_url}"
         return CompletionGate(
             name="remote_ci_verified",
             passed=True,
             detail="Remote CI evidence was supplied and indicates success.",
-            evidence=str(evidence_path) if evidence_path else ci_url,
+            evidence=evidence,
+        )
+    if ci_url:
+        return CompletionGate(
+            name="remote_ci_verified",
+            passed=False,
+            detail=(
+                "Remote CI URL was supplied, but a URL alone does not prove a "
+                "successful run. Provide --ci-evidence containing a successful CI conclusion."
+            ),
+            evidence=ci_url,
         )
     return CompletionGate(
         name="remote_ci_verified",
