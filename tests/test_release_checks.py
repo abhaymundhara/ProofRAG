@@ -160,6 +160,13 @@ def test_release_checks_passes_publication_claim_threshold_args(tmp_path: Path):
     assert "0.01" in command
     assert "--require-significance" in command
 
+    external = next(entry for entry in manifest if entry["name"] == "external_completion_gates")
+    external_command = external["command"]
+    assert "--claim-min-total" in external_command
+    assert "250" in external_command
+    assert "--claim-min-groundedness-delta" in external_command
+    assert "--require-claim-significance" in external_command
+
 
 def test_release_report_marks_failed_results(tmp_path: Path):
     report = write_report(

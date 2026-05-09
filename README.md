@@ -316,6 +316,8 @@ comparison/faithfulness/review, Docker, CI, and claim-threshold flags shown in
 release evidence bundle as `proofrag-release-evidence` on the Python 3.11 lane.
 Use `scripts/write_external_evidence_manifest.py` to generate a reviewer-facing
 artifact checklist plus the exact gate and release commands for those paths.
+The completion gate validates both artifact presence and the configured
+publication-claim thresholds before setting `ready_for_superiority_claim=true`.
 
 ---
 

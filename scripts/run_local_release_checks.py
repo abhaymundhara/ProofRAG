@@ -198,12 +198,21 @@ def _completion_gate_args(args: argparse.Namespace, output_json: Path) -> list[s
         ("--ci-url", args.ci_url),
         ("--docker-build-tag", args.docker_build_tag),
         ("--docker-build-context", args.docker_build_context),
+        ("--claim-min-total", args.claim_min_total),
+        ("--claim-max-accuracy-drop", args.claim_max_accuracy_drop),
+        ("--claim-min-precision-at-answered", args.claim_min_precision_at_answered),
+        ("--claim-max-unsafe-allow-rate", args.claim_max_unsafe_allow_rate),
+        ("--claim-min-groundedness-delta", args.claim_min_groundedness_delta),
+        ("--claim-max-unsupported-claim-ratio", args.claim_max_unsupported_claim_ratio),
+        ("--claim-alpha", args.claim_alpha),
     ]
     for flag, value in optional_flags:
         if value is not None:
             command.extend([flag, str(value)])
     if args.check_docker_build:
         command.append("--check-docker-build")
+    if args.require_significance:
+        command.append("--require-claim-significance")
     return command
 
 

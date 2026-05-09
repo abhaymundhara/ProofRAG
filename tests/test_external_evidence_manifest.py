@@ -28,10 +28,11 @@ def _args(**overrides: object) -> argparse.Namespace:
         "claim_min_total": 100,
         "claim_max_accuracy_drop": 0.05,
         "claim_min_precision_at_answered": 0.75,
-        "claim_max_unsafe_allow_rate": 0.05,
-        "claim_min_groundedness_delta": 0.05,
-        "claim_max_unsupported_claim_ratio": 0.5,
+        "claim_max_unsafe_allow_rate": 0.0,
+        "claim_min_groundedness_delta": 0.10,
+        "claim_max_unsupported_claim_ratio": 0.75,
         "claim_alpha": 0.05,
+        "require_claim_significance": False,
         "output_dir": "experiments/results/full_release_checks",
     }
     defaults.update(overrides)
@@ -66,6 +67,10 @@ def test_manifest_includes_all_supplied_external_paths():
     release_shell = manifest["commands"]["full_release_shell"]
     assert "--lihua-qa-csv data/query_set.csv" in gate_shell
     assert "--ci-url https://github.com/example/proofrag/actions/runs/123" in gate_shell
+    assert "--claim-min-total 100" in gate_shell
+    assert "--claim-max-unsafe-allow-rate 0.0" in gate_shell
+    assert "--claim-min-groundedness-delta 0.1" in gate_shell
+    assert "--claim-max-unsupported-claim-ratio 0.75" in gate_shell
     assert "--claim-comparison-summary results/comparison_summary.json" in release_shell
     assert "--require-significance" in release_shell
 

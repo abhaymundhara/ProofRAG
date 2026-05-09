@@ -19,6 +19,14 @@ def _args(tmp_path: Path, **overrides: object) -> argparse.Namespace:
         "comparison_summary": None,
         "faithfulness_summary": None,
         "review_note": None,
+        "claim_min_total": 100,
+        "claim_max_accuracy_drop": 0.05,
+        "claim_min_precision_at_answered": 0.75,
+        "claim_max_unsafe_allow_rate": 0.0,
+        "claim_min_groundedness_delta": 0.10,
+        "claim_max_unsupported_claim_ratio": 0.75,
+        "require_claim_significance": False,
+        "claim_alpha": 0.05,
         "docker_evidence": None,
         "docker_build_tag": "proofrag:test",
         "docker_build_context": ".",
@@ -101,6 +109,7 @@ def test_completion_gates_pass_with_concrete_artifacts(tmp_path: Path):
             comparison_summary=str(comparison),
             faithfulness_summary=str(faithfulness),
             review_note=str(review),
+            claim_min_total=1,
             docker_evidence=str(docker_evidence),
             ci_url="https://github.com/example/proofrag/actions/runs/1",
         )
@@ -259,6 +268,58 @@ def test_completion_gates_reject_unreviewed_result_note(tmp_path: Path):
     )
     assert gate["passed"] is False
     assert "review note" in gate["detail"]
+
+
+def test_completion_gates_reject_schema_valid_but_weak_claims(tmp_path: Path):
+    comparison = tmp_path / "comparison.json"
+    comparison.write_text(
+        json.dumps(
+            {
+                "baseline": {"total": 10, "accuracy": 0.9},
+                "proofrag": {
+                    "total": 10,
+                    "accuracy": 0.7,
+                    "precision_at_answered": 0.6,
+                    "unsafe_allow_count": 2,
+                },
+                "paired_answer_accuracy": {"exact_p_value": 0.5},
+            }
+        ),
+        encoding="utf-8",
+    )
+    faithfulness = tmp_path / "faithfulness.json"
+    faithfulness.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "total": 10,
+                    "baseline_mean_groundedness": 0.5,
+                    "proofrag_mean_groundedness": 0.52,
+                    "baseline_unsupported_claims": 4,
+                    "proofrag_unsupported_claims": 4,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    review = tmp_path / "review.md"
+    review.write_text("Reviewed full external benchmark artifacts.\n", encoding="utf-8")
+
+    report = build_completion_report(
+        _args(
+            tmp_path,
+            comparison_summary=str(comparison),
+            faithfulness_summary=str(faithfulness),
+            review_note=str(review),
+            claim_min_total=10,
+        )
+    )
+
+    gate = next(
+        item for item in report["gates"] if item["name"] == "reviewed_result_artifacts"
+    )
+    assert gate["passed"] is False
+    assert "publication claim thresholds failed" in gate["detail"]
 
 
 def test_completion_gate_cli_exits_nonzero_when_blocked(tmp_path: Path):

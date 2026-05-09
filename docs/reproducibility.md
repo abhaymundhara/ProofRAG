@@ -41,6 +41,12 @@ python scripts/check_completion_gates.py \
   --review-note experiments/results/full_benchmark_review.md \
   --docker-evidence experiments/results/docker_build.txt \
   --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  --claim-min-total 100 \
+  --claim-max-accuracy-drop 0.05 \
+  --claim-min-precision-at-answered 0.75 \
+  --claim-max-unsafe-allow-rate 0.0 \
+  --claim-min-groundedness-delta 0.10 \
+  --claim-max-unsupported-claim-ratio 0.75 \
   --output-json experiments/results/completion_gates.json
 ```
 
@@ -50,7 +56,10 @@ baseline-export rows. Use `--min-lihua-qa-rows` and
 fixture.
 
 Docker evidence must mention a successful `docker build`; CI evidence must be a
-GitHub Actions run URL or a file indicating a successful CI conclusion.
+GitHub Actions run URL or a file indicating a successful CI conclusion. The
+completion gate also applies publication-claim thresholds to the comparison and
+faithfulness summaries, so schema-valid weak metrics cannot mark the repository
+ready for superiority claims.
 
 To produce a reviewer-facing checklist and copyable validation commands from
 the artifact paths, write an external evidence manifest:

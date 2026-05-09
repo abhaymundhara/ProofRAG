@@ -12,6 +12,11 @@ from typing import Any
 from proofrag.evaluation.lihua import load_lihua_qa_csv
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 
+try:
+    from scripts.validate_publication_claims import validate_claims
+except ModuleNotFoundError:  # pragma: no cover - exercised by direct CLI invocation.
+    from validate_publication_claims import validate_claims
+
 
 @dataclass(frozen=True)
 class CompletionGate:
@@ -127,6 +132,7 @@ def _check_result_artifacts(
     comparison_summary: str | None,
     faithfulness_summary: str | None,
     review_note: str | None,
+    args: argparse.Namespace,
 ) -> CompletionGate:
     comparison_path = _nonempty_file(comparison_summary)
     faithfulness_path = _nonempty_file(faithfulness_summary)
@@ -137,6 +143,7 @@ def _check_result_artifacts(
             faithfulness = json.loads(faithfulness_path.read_text(encoding="utf-8"))
             _validate_result_artifact_shapes(comparison, faithfulness)
             _validate_review_note(review_path)
+            _validate_publication_claims(args)
         except (json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
             return CompletionGate(
                 name="reviewed_result_artifacts",
@@ -196,6 +203,31 @@ def _validate_review_note(path: Path) -> None:
     text = path.read_text(encoding="utf-8").strip().lower()
     if "review" not in text or "benchmark" not in text:
         raise ValueError("review note must mention review and benchmark scope")
+
+
+def _validate_publication_claims(args: argparse.Namespace) -> None:
+    claim_args = argparse.Namespace(
+        comparison_summary=args.comparison_summary,
+        faithfulness_summary=args.faithfulness_summary,
+        min_total=args.claim_min_total,
+        max_accuracy_drop=args.claim_max_accuracy_drop,
+        min_precision_at_answered=args.claim_min_precision_at_answered,
+        max_unsafe_allow_rate=args.claim_max_unsafe_allow_rate,
+        min_groundedness_delta=args.claim_min_groundedness_delta,
+        max_unsupported_claim_ratio=args.claim_max_unsupported_claim_ratio,
+        require_significance=args.require_claim_significance,
+        alpha=args.claim_alpha,
+    )
+    report = validate_claims(claim_args)
+    if not report["publication_claim_ready"]:
+        failed = [
+            f"{check['name']} observed={check['observed']} threshold={check['threshold']}"
+            for check in report["checks"]
+            if not check["passed"]
+        ]
+        raise ValueError(
+            "publication claim thresholds failed: " + "; ".join(failed)
+        )
 
 
 def _check_docker_build(
@@ -325,6 +357,7 @@ def build_completion_report(args: argparse.Namespace) -> dict[str, Any]:
             args.comparison_summary,
             args.faithfulness_summary,
             args.review_note,
+            args,
         ),
         _check_docker_build(
             args.check_docker_daemon,
@@ -357,6 +390,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--comparison-summary", help="Full benchmark comparison JSON summary.")
     parser.add_argument("--faithfulness-summary", help="Full benchmark faithfulness JSON summary.")
     parser.add_argument("--review-note", help="Human review note for the full benchmark artifacts.")
+    parser.add_argument("--claim-min-total", type=int, default=100)
+    parser.add_argument("--claim-max-accuracy-drop", type=float, default=0.05)
+    parser.add_argument("--claim-min-precision-at-answered", type=float, default=0.75)
+    parser.add_argument("--claim-max-unsafe-allow-rate", type=float, default=0.0)
+    parser.add_argument("--claim-min-groundedness-delta", type=float, default=0.10)
+    parser.add_argument("--claim-max-unsupported-claim-ratio", type=float, default=0.75)
+    parser.add_argument(
+        "--require-claim-significance",
+        action="store_true",
+        help="Require paired exact-test significance in full-benchmark claim artifacts.",
+    )
+    parser.add_argument("--claim-alpha", type=float, default=0.05)
     parser.add_argument("--docker-evidence", help="Text/JSON evidence from a successful Docker build.")
     parser.add_argument("--ci-evidence", help="Text/JSON evidence from a successful remote CI run.")
     parser.add_argument("--ci-url", help="URL to a successful remote CI run.")

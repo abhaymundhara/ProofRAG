@@ -38,7 +38,7 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 231 tests, 2 third-party deprecation warnings.
+- `pytest` passed: 232 tests, 2 third-party deprecation warnings.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.
@@ -97,7 +97,13 @@ python scripts/check_completion_gates.py \
   --faithfulness-summary experiments/results/full_faithfulness_summary.json \
   --review-note experiments/results/full_benchmark_review.md \
   --docker-evidence experiments/results/docker_build.txt \
-  --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID
+  --ci-url https://github.com/OWNER/REPO/actions/runs/RUN_ID \
+  --claim-min-total 100 \
+  --claim-max-accuracy-drop 0.05 \
+  --claim-min-precision-at-answered 0.75 \
+  --claim-max-unsafe-allow-rate 0.0 \
+  --claim-min-groundedness-delta 0.10 \
+  --claim-max-unsupported-claim-ratio 0.75
 ```
 
 On a Docker-enabled machine, `--check-docker-build` can be used instead of a
@@ -111,6 +117,8 @@ baseline-export rows, so the bundled smoke fixtures cannot satisfy full
 publication readiness by accident.
 Docker evidence must mention a successful `docker build`, and CI evidence must
 be a GitHub Actions run URL or a file indicating a successful CI conclusion.
+The completion gate also applies publication-claim thresholds before setting
+`ready_for_superiority_claim=true`.
 
 When full comparison and faithfulness summaries exist, publication claims must
 also pass:
