@@ -38,22 +38,37 @@ paper or release reviewer.
    ```bash
    python scripts/run_lihua_eval.py \
      --minirag-export experiments/results/full_minirag_export.jsonl \
-     --proofrag-output experiments/results/full_proofrag_results.jsonl \
-     --comparison-summary experiments/results/full_comparison_summary.json \
-     --publication-md experiments/results/full_publication_table.md \
+     --output experiments/results/full_proofrag_results.jsonl \
+     --summary-json experiments/results/full_comparison_summary.json \
+     --table-md experiments/results/full_comparison_table.md \
+     --chart-svg experiments/results/full_comparison_chart.svg \
      --qa-csv path/to/LiHua-World/qa/query_set.csv \
      --data-dir path/to/LiHua-World/data \
-     --source-report experiments/results/full_lihua_source_resolution.json
+     --source-resolution-json experiments/results/full_lihua_source_resolution.json
+   ```
+
+   To run the comparison, faithfulness scoring, review-note generation,
+   evidence manifest, and completion-gate checks as one reproducible sequence,
+   use:
+
+   ```bash
+   python scripts/run_full_benchmark_pipeline.py \
+     --minirag-export experiments/results/full_minirag_export.jsonl \
+     --output-dir experiments/results/full_benchmark \
+     --lihua-qa-csv path/to/LiHua-World/qa/query_set.csv \
+     --lihua-data-dir path/to/LiHua-World/data \
+     --reviewer "Reviewer Name" \
+     --review-date YYYY-MM-DD
    ```
 
 4. Score faithfulness over the same export/result pair:
 
    ```bash
    python scripts/score_faithfulness.py \
+     --results experiments/results/full_proofrag_results.jsonl \
      --minirag-export experiments/results/full_minirag_export.jsonl \
-     --proofrag-results experiments/results/full_proofrag_results.jsonl \
      --summary-json experiments/results/full_faithfulness_summary.json \
-     --report-md experiments/results/full_faithfulness_report.md
+     --table-md experiments/results/full_faithfulness_table.md
    ```
 
 5. Record reviewer notes in `experiments/results/full_benchmark_review.md`.

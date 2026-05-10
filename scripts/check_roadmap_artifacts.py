@@ -141,6 +141,7 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
             "scripts/run_ablation.py",
             "scripts/make_publication_tables.py",
             "scripts/reproduce_paper_results.sh",
+            "scripts/run_full_benchmark_pipeline.py",
         ),
         verification=("tests/test_tables_plots.py", "tests/test_publication_scripts.py"),
     ),

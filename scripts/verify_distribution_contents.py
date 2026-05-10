@@ -37,6 +37,7 @@ REQUIRED_SDIST_PATHS = (
     "scripts/make_publication_tables.py",
     "scripts/run_local_release_checks.py",
     "scripts/run_lihua_eval.py",
+    "scripts/run_full_benchmark_pipeline.py",
     "scripts/run_ablation.py",
     "scripts/score_faithfulness.py",
     "scripts/summarize_experiment_log.py",
