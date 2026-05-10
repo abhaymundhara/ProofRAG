@@ -82,6 +82,8 @@ def test_ci_workflow_runs_release_gates():
     assert "python -m build --sdist --wheel --outdir /tmp/proofrag_dist_ci" in workflow
     assert "scripts/verify_distribution_contents.py --dist-dir /tmp/proofrag_dist_ci" in workflow
     assert "scripts/run_local_release_checks.py --output-dir /tmp/proofrag_release_checks_ci" in workflow
+    assert "docker build -t proofrag:ci ." in workflow
+    assert "docker_build.txt" in workflow
     assert "github_actions_success.txt" in workflow
     assert "Conclusion: success" in workflow
     assert "actions/upload-artifact@v4" in workflow

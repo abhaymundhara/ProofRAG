@@ -55,6 +55,23 @@ jobs:
         if: matrix.python-version == '3.11'
         run: python scripts/run_local_release_checks.py --output-dir /tmp/proofrag_release_checks_ci
 
+      - name: Docker build evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -o pipefail
+          docker build -t proofrag:ci . 2>&1 | tee /tmp/proofrag_release_checks_ci/docker_build.log
+          cat > /tmp/proofrag_release_checks_ci/docker_build.txt <<EOF
+          ProofRAG Docker build evidence
+          Provider: GitHub Actions
+          Workflow: .github/workflows/ci.yml
+          Run URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          Run ID: ${{ github.run_id }}
+          Git commit: ${{ github.sha }}
+          Command: docker build -t proofrag:ci .
+          Result: docker build succeeded
+          Log: docker_build.log
+          EOF
+
       - name: Record CI success evidence
         if: matrix.python-version == '3.11'
         run: |
