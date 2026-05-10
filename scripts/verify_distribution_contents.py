@@ -43,6 +43,7 @@ REQUIRED_SDIST_PATHS = (
     "scripts/audit_completion_readiness.py",
     "scripts/init_external_evidence_bundle.py",
     "scripts/write_external_evidence_manifest.py",
+    "scripts/write_full_benchmark_review.py",
     "scripts/reproduce_paper_results.sh",
     "scripts/check_roadmap_artifacts.py",
     "scripts/validate_publication_claims.py",

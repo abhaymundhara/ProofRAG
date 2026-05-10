@@ -59,7 +59,9 @@ paper or release reviewer.
 5. Record reviewer notes in `experiments/results/full_benchmark_review.md`.
    The note should identify the dataset slice, baseline export, comparison
    summary, faithfulness summary, and any excluded rows. Start from
-   `docs/full_benchmark_review_template.md` and replace every placeholder.
+   `docs/full_benchmark_review_template.md` and replace every placeholder, or
+   generate a filled draft with `scripts/write_full_benchmark_review.py` and
+   review the metrics before using it as completion-gate evidence.
 6. Capture Docker and CI evidence from the machines that ran them. Use
    `docs/release_evidence_templates.md` so the evidence includes the command,
    environment, run URL, commit, and success conclusion expected by reviewers.

@@ -38,7 +38,7 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 249 tests.
+- `pytest` passed: 251 tests.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.

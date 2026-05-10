@@ -153,6 +153,7 @@ REQUIREMENTS: tuple[RoadmapRequirement, ...] = (
             "scripts/validate_publication_claims.py",
             "scripts/init_external_evidence_bundle.py",
             "scripts/write_external_evidence_manifest.py",
+            "scripts/write_full_benchmark_review.py",
             "docs/results_snapshot.md",
             "docs/external_evidence_checklist.md",
             "docs/full_benchmark_review_template.md",
