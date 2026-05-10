@@ -61,6 +61,11 @@ def test_cli_vector_backend_reports_actionable_error():
 def test_faiss_retriever_queries_optional_backend(tmp_path, monkeypatch):
     context_path = _write_vector_context(tmp_path)
 
+    class FakeArray(list):
+        @property
+        def shape(self):
+            return (len(self), len(self[0]) if self else 0)
+
     class FakeIndex:
         def __init__(self, dimensions):
             self.dimensions = dimensions
@@ -75,6 +80,11 @@ def test_faiss_retriever_queries_optional_backend(tmp_path, monkeypatch):
         __import__("sys").modules,
         "faiss",
         types.SimpleNamespace(IndexFlatIP=FakeIndex),
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "numpy",
+        types.SimpleNamespace(array=lambda values, dtype=None: FakeArray(values)),
     )
 
     ledger = FAISSRetriever(context_path=context_path, top_k=1).retrieve(

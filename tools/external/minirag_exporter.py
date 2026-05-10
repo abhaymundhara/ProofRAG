@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 import sys
 import csv
 from pathlib import Path
@@ -112,9 +111,23 @@ def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: s
             sys.path.append(str(minirag_path))
             
         try:
+            # Check required index files before importing heavyweight optional
+            # model dependencies. This keeps missing-index failures actionable on
+            # clean CI/dev installs that do not include transformers.
+            expected_files = ["vdb_chunks.json"]
+            if mode == "mini":
+                expected_files.extend(["vdb_entities.json", "vdb_entities_name.json", "vdb_relationships.json"])
+
+            missing_files = []
+            for f in expected_files:
+                if not (Path(working_dir) / f).exists():
+                    missing_files.append(f)
+
+            if missing_files:
+                raise FileNotFoundError(f"Cannot run mode '{mode}' because required index files are missing in {working_dir}: {missing_files}. Please run the indexing script (e.g. tools/external/run_minirag_tiny_index.py) first.")
+
             from minirag import MiniRAG
             from minirag.minirag import QueryParam
-            from minirag.operate import naive_query
             from minirag.llm.ollama import ollama_model_complete
             from minirag.llm.hf import hf_embed
             from minirag.utils import EmbeddingFunc
@@ -138,19 +151,6 @@ def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: s
                     ),
                 ),
             )
-            
-            # Check required index files based on mode
-            expected_files = ["vdb_chunks.json"]
-            if mode == "mini":
-                expected_files.extend(["vdb_entities.json", "vdb_entities_name.json", "vdb_relationships.json"])
-            
-            missing_files = []
-            for f in expected_files:
-                if not (Path(working_dir) / f).exists():
-                    missing_files.append(f)
-            
-            if missing_files:
-                raise FileNotFoundError(f"Cannot run mode '{mode}' because required index files are missing in {working_dir}: {missing_files}. Please run the indexing script (e.g. tools/external/run_minirag_tiny_index.py) first.")
 
             # Use the official MiniRAG query interface which handles mode dispatching (mini, naive, etc.)
             async def get_results(question):
