@@ -44,6 +44,7 @@ def test_dev_extra_includes_lint_and_type_tools():
     assert '"ruff>=0.6"' in pyproject
     assert '"mypy>=1.10"' in pyproject
     assert '"build>=1.2"' in pyproject
+    assert '"wheel>=0.43"' in pyproject
     assert "[tool.mypy]" in pyproject
 
 
