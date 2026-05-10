@@ -21,6 +21,18 @@ OBJECTIVE = (
     "LiHua/MiniRAG, Docker, CI, and reviewed metric evidence pass hard gates."
 )
 
+GATE_BLOCKER_TEXT = {
+    "full_lihua_world_data": {"Full LiHua-World data is external."},
+    "normalized_baseline_export": {
+        "Full external MiniRAG/LightRAG exports are not present.",
+    },
+    "reviewed_result_artifacts": {
+        "Reviewed full-benchmark metrics are not present.",
+    },
+    "docker_build_verified": {"Docker image build evidence is not present."},
+    "remote_ci_verified": {"Remote GitHub CI run evidence is not present."},
+}
+
 
 def _default_completion_args() -> argparse.Namespace:
     return argparse.Namespace(
@@ -54,6 +66,7 @@ def _default_completion_args() -> argparse.Namespace:
 def build_audit_report(completion_args: argparse.Namespace | None = None) -> dict[str, Any]:
     roadmap = build_artifact_report()
     gates = build_completion_report(completion_args or _default_completion_args())
+    failed_gate_names = {gate["name"] for gate in gates["gates"] if not gate["passed"]}
     open_items = [
         {
             "name": gate["name"],
@@ -71,17 +84,41 @@ def build_audit_report(completion_args: argparse.Namespace | None = None) -> dic
         "external_superiority_ready": external_ready,
         "open_items": open_items,
         "roadmap_status": roadmap["status"],
-        "externally_blocked_requirements": [
-            {
-                "phase": row["phase"],
-                "requirement": row["requirement"],
-                "external_blockers": row["external_blockers"],
-            }
-            for row in roadmap["externally_blocked"]
-        ],
+        "externally_blocked_requirements": _active_roadmap_blockers(
+            roadmap["externally_blocked"],
+            failed_gate_names,
+        ),
         "completion_gates": gates,
         "roadmap_artifacts": roadmap,
     }
+
+
+def _active_roadmap_blockers(
+    roadmap_blockers: list[dict[str, Any]],
+    failed_gate_names: set[str],
+) -> list[dict[str, Any]]:
+    active_blocker_text = {
+        blocker
+        for gate_name in failed_gate_names
+        for blocker in GATE_BLOCKER_TEXT.get(gate_name, set())
+    }
+    active_rows = []
+    for row in roadmap_blockers:
+        blockers = [
+            blocker
+            for blocker in row["external_blockers"]
+            if blocker in active_blocker_text
+        ]
+        if not blockers:
+            continue
+        active_rows.append(
+            {
+                "phase": row["phase"],
+                "requirement": row["requirement"],
+                "external_blockers": blockers,
+            }
+        )
+    return active_rows
 
 
 def write_markdown(path: Path, report: dict[str, Any]) -> None:

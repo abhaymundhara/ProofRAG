@@ -24,9 +24,9 @@ generated and reviewed.
 | LiHua helpers | Complete for external local data | `proofrag/evaluation/lihua.py`, `scripts/run_lihua_eval.py`, tests |
 | Comparison and statistics | Complete | `comparison.py`, `statistics.py`, `error_analysis.py`, tables/charts, tests |
 | Human evaluation export | Complete | `proofrag/human_eval/schema.py`, `scripts/prepare_human_eval.py`, tests |
-| API and container files | Source complete, Docker image build unverified | `proofrag/api/`, `Dockerfile`, `docker-compose.yml`, tests |
+| API and container files | Source complete, Docker build verified in CI | `proofrag/api/`, `Dockerfile`, `docker-compose.yml`, `docker_build.txt` release artifact |
 | Packaging | Complete locally | `pyproject.toml`, `proofrag/py.typed`, sdist/wheel build verified |
-| CI gates | Source complete, remote run pending | `.github/workflows/ci.yml`, local Ruff/mypy/pytest/package verification |
+| CI gates | Remote run verified | `.github/workflows/ci.yml`, GitHub Actions run `25640084436`, release evidence artifact |
 | Publication polish | Source complete, empirical claims pending | README, architecture SVG, reproducibility docs, paper abstract, publication-table scripts |
 | Local smoke result snapshot | Complete, limited scope | `docs/results_snapshot.md` records 10-question LiHua single-hop smoke metrics |
 | External completion gate checker | Complete | `scripts/check_completion_gates.py`, `tests/test_completion_gates.py` |
@@ -38,7 +38,7 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 247 tests, 2 third-party deprecation warnings.
+- `pytest` passed: 248 tests.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.
@@ -62,24 +62,25 @@ generated and reviewed.
   external-blocker checks in one JSON report.
 - `scripts/check_roadmap_artifacts.py` validates that every roadmap phase maps
   to local artifacts and records which requirements remain externally blocked.
+- GitHub Actions run `25640084436` passed the Python 3.10/3.11/3.12 matrix.
+- The Python 3.11 release-evidence artifact from that run contains accepted
+  `docker_build.txt` and `github_actions_success.txt` evidence files.
+- The official MiniRAG LiHua-World QA/data artifacts were fetched to `/tmp`;
+  `scripts/check_completion_gates.py` validated 637 QA rows, 442 extracted
+  source files, and 266/267 resolved evidence IDs (99.6%).
 
 ## Open Completion Gates
 
-1. Full LiHua-World data is not vendored. The repo provides loaders,
-   source-resolution checks, and evaluation wrappers, but final full-dataset
-   results require an external local LiHua-World copy.
-2. Real MiniRAG baseline exports are not generated in this repository by
+1. Real MiniRAG baseline exports are not generated in this repository by
    default. The normalized export schema and external helper scripts exist, but
    final superiority claims require running MiniRAG and storing reviewed result
    artifacts.
-3. Docker source files are present, but `docker build -t proofrag:completion-gate .`
-   could not be verified in this session because the local Docker daemon socket
-   was unavailable.
-4. Optional FAISS, Chroma, LanceDB, transformers, Ollama, and OpenAI-compatible
+2. Reviewed full-benchmark comparison and faithfulness artifacts are still not
+   present. Final superiority claims require metric JSON files and a review note
+   that pass `scripts/check_completion_gates.py`.
+3. Optional FAISS, Chroma, LanceDB, transformers, Ollama, and OpenAI-compatible
    backends are dependency/service gated. Default tests verify imports,
    fallbacks, and request construction without requiring heavyweight services.
-5. The CI workflow is checked into source but has not run on a remote GitHub
-   runner in this session.
 
 ## Claim Boundary
 

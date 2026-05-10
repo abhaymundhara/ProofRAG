@@ -51,9 +51,10 @@ def test_dev_extra_includes_lint_and_type_tools():
 def test_completion_audit_documents_open_gates():
     audit = Path("docs/completion_audit.md").read_text(encoding="utf-8")
 
-    assert "Full LiHua-World data is not vendored" in audit
-    assert "Docker image build unverified" in audit
-    assert "Docker daemon socket" in audit
+    assert "Real MiniRAG baseline exports are not generated" in audit
+    assert "Reviewed full-benchmark comparison and faithfulness artifacts" in audit
+    assert "Docker build verified in CI" in audit
+    assert "GitHub Actions run `25640084436`" in audit
     assert "python -m ruff check proofrag scripts tests" in audit
     assert "scripts/audit_completion_readiness.py" in audit
     assert "completion_readiness_audit" in audit

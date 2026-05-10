@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scripts.audit_completion_readiness import build_audit_report
+from scripts.audit_completion_readiness import _default_completion_args, build_audit_report
 
 
 def test_completion_readiness_audit_blocks_without_external_evidence():
@@ -18,6 +18,33 @@ def test_completion_readiness_audit_blocks_without_external_evidence():
     assert "full_lihua_world_data" in open_names
     assert "normalized_baseline_export" in open_names
     assert "remote_ci_verified" in open_names
+
+
+def test_completion_readiness_audit_filters_satisfied_external_blockers(tmp_path: Path):
+    docker_evidence = tmp_path / "docker_build.txt"
+    docker_evidence.write_text("docker build -t proofrag:test .\ndocker build succeeded\n")
+    ci_evidence = tmp_path / "github_actions_success.txt"
+    ci_evidence.write_text(
+        "Provider: GitHub Actions\n"
+        "Run URL: https://github.com/example/proofrag/actions/runs/1\n"
+        "Conclusion: success\n"
+    )
+    args = _default_completion_args()
+    args.docker_evidence = str(docker_evidence)
+    args.ci_evidence = str(ci_evidence)
+
+    report = build_audit_report(args)
+
+    open_names = {item["name"] for item in report["open_items"]}
+    assert "docker_build_verified" not in open_names
+    assert "remote_ci_verified" not in open_names
+    active_blockers = {
+        blocker
+        for row in report["externally_blocked_requirements"]
+        for blocker in row["external_blockers"]
+    }
+    assert "Docker image build evidence is not present." not in active_blockers
+    assert "Remote GitHub CI run evidence is not present." not in active_blockers
 
 
 def test_completion_readiness_audit_cli_writes_outputs(tmp_path: Path):
