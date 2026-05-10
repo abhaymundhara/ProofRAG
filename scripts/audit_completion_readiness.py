@@ -67,6 +67,7 @@ def build_audit_report(completion_args: argparse.Namespace | None = None) -> dic
     roadmap = build_artifact_report()
     gates = build_completion_report(completion_args or _default_completion_args())
     failed_gate_names = {gate["name"] for gate in gates["gates"] if not gate["passed"]}
+    evidence_aware_roadmap = _roadmap_with_active_blockers(roadmap, failed_gate_names)
     open_items = [
         {
             "name": gate["name"],
@@ -85,11 +86,45 @@ def build_audit_report(completion_args: argparse.Namespace | None = None) -> dic
         "open_items": open_items,
         "roadmap_status": roadmap["status"],
         "externally_blocked_requirements": _active_roadmap_blockers(
-            roadmap["externally_blocked"],
+            evidence_aware_roadmap["externally_blocked"],
             failed_gate_names,
         ),
         "completion_gates": gates,
-        "roadmap_artifacts": roadmap,
+        "roadmap_artifacts": evidence_aware_roadmap,
+    }
+
+
+def _active_blocker_text(failed_gate_names: set[str]) -> set[str]:
+    return {
+        blocker
+        for gate_name in failed_gate_names
+        for blocker in GATE_BLOCKER_TEXT.get(gate_name, set())
+    }
+
+
+def _roadmap_with_active_blockers(
+    roadmap: dict[str, Any],
+    failed_gate_names: set[str],
+) -> dict[str, Any]:
+    active_blocker_text = _active_blocker_text(failed_gate_names)
+    rows: list[dict[str, Any]] = []
+    for row in roadmap["requirements"]:
+        updated = dict(row)
+        blockers = [
+            blocker
+            for blocker in row["external_blockers"]
+            if blocker in active_blocker_text
+        ]
+        updated["external_blockers"] = blockers
+        if updated["local_complete"]:
+            updated["status"] = "externally_blocked" if blockers else "locally_complete"
+        rows.append(updated)
+    return {
+        **roadmap,
+        "externally_blocked": [
+            row for row in rows if row["status"] == "externally_blocked"
+        ],
+        "requirements": rows,
     }
 
 
@@ -97,11 +132,7 @@ def _active_roadmap_blockers(
     roadmap_blockers: list[dict[str, Any]],
     failed_gate_names: set[str],
 ) -> list[dict[str, Any]]:
-    active_blocker_text = {
-        blocker
-        for gate_name in failed_gate_names
-        for blocker in GATE_BLOCKER_TEXT.get(gate_name, set())
-    }
+    active_blocker_text = _active_blocker_text(failed_gate_names)
     active_rows = []
     for row in roadmap_blockers:
         blockers = [

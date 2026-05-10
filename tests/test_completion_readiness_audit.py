@@ -45,6 +45,13 @@ def test_completion_readiness_audit_filters_satisfied_external_blockers(tmp_path
     }
     assert "Docker image build evidence is not present." not in active_blockers
     assert "Remote GitHub CI run evidence is not present." not in active_blockers
+    roadmap_blockers = {
+        blocker
+        for row in report["roadmap_artifacts"]["externally_blocked"]
+        for blocker in row["external_blockers"]
+    }
+    assert "Docker image build evidence is not present." not in roadmap_blockers
+    assert "Remote GitHub CI run evidence is not present." not in roadmap_blockers
 
 
 def test_completion_readiness_audit_cli_writes_outputs(tmp_path: Path):
