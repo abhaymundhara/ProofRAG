@@ -26,7 +26,7 @@ generated and reviewed.
 | Human evaluation export | Complete | `proofrag/human_eval/schema.py`, `scripts/prepare_human_eval.py`, tests |
 | API and container files | Source complete, Docker build verified in CI | `proofrag/api/`, `Dockerfile`, `docker-compose.yml`, `docker_build.txt` release artifact |
 | Packaging | Complete locally | `pyproject.toml`, `proofrag/py.typed`, sdist/wheel build verified |
-| CI gates | Remote run verified | `.github/workflows/ci.yml`, GitHub Actions run `25640084436`, release evidence artifact |
+| CI gates | Remote run verified | `.github/workflows/ci.yml`, GitHub Actions run `25640643619`, release evidence artifact |
 | Publication polish | Source complete, empirical claims pending | README, architecture SVG, reproducibility docs, paper abstract, publication-table scripts |
 | Local smoke result snapshot | Complete, limited scope | `docs/results_snapshot.md` records 10-question LiHua single-hop smoke metrics |
 | External completion gate checker | Complete | `scripts/check_completion_gates.py`, `tests/test_completion_gates.py` |
@@ -38,7 +38,7 @@ generated and reviewed.
 
 - `python -m ruff check proofrag scripts tests` passed.
 - `python -m mypy` passed for 50 package source files.
-- `pytest` passed: 248 tests.
+- `pytest` passed: 249 tests.
 - `python scripts/run_toy_benchmark.py` passed: 30 examples, 100% behavioural pass, 0 unsafe allows.
 - CLI hybrid iterative smoke returned `answer_allowed=true` with `retriever_backend=hybrid`.
 - `bash scripts/reproduce_paper_results.sh benchmarks/sample_minirag_export.jsonl /tmp/proofrag_repro_gates` wrote comparison, ablation, chart, and publication-table artifacts.
@@ -62,7 +62,7 @@ generated and reviewed.
   external-blocker checks in one JSON report.
 - `scripts/check_roadmap_artifacts.py` validates that every roadmap phase maps
   to local artifacts and records which requirements remain externally blocked.
-- GitHub Actions run `25640084436` passed the Python 3.10/3.11/3.12 matrix.
+- GitHub Actions run `25640643619` passed the Python 3.10/3.11/3.12 matrix.
 - The Python 3.11 release-evidence artifact from that run contains accepted
   `docker_build.txt` and `github_actions_success.txt` evidence files.
 - The official MiniRAG LiHua-World QA/data artifacts were fetched to `/tmp`;

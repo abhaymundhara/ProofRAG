@@ -54,7 +54,7 @@ def test_completion_audit_documents_open_gates():
     assert "Real MiniRAG baseline exports are not generated" in audit
     assert "Reviewed full-benchmark comparison and faithfulness artifacts" in audit
     assert "Docker build verified in CI" in audit
-    assert "GitHub Actions run `25640084436`" in audit
+    assert "GitHub Actions run `25640643619`" in audit
     assert "python -m ruff check proofrag scripts tests" in audit
     assert "scripts/audit_completion_readiness.py" in audit
     assert "completion_readiness_audit" in audit
