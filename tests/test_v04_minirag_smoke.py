@@ -82,3 +82,37 @@ def test_smoke_script_importable():
     # Just check if we can import the pieces needed for the smoke script
     from scripts.run_minirag_single_smoke_with_model import main
     assert callable(main)
+
+
+def test_tiny_query_export_entrypoint_dry_run(tmp_path):
+    import subprocess
+    import sys
+
+    csv_file = tmp_path / "qa.csv"
+    csv_file.write_text(
+        "Question,Gold Answer,Evidence,Type\n"
+        "Who confirmed the plumber?,Adam,20260106_15:00,Single\n",
+        encoding="utf-8",
+    )
+    output_file = tmp_path / "export.jsonl"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "tools/external/run_minirag_tiny_query_export.py",
+            "--qa-file",
+            str(csv_file),
+            "--output",
+            str(output_file),
+            "--dry-run",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    rows = [json.loads(line) for line in output_file.read_text(encoding="utf-8").splitlines()]
+    assert len(rows) == 1
+    assert rows[0]["baseline_method"] == "minirag"
+    assert rows[0]["retrieved_context"]

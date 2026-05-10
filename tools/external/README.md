@@ -34,7 +34,7 @@ To run a real export (requires MiniRAG and its dependencies):
 ```bash
 # This command is NOT run by ProofRAG's default test suite
 python tools/external/minirag_exporter.py \
-  --minirag-root ../external/MiniRAG \
+  --minirag-dir ../external/MiniRAG \
   --working-dir ../external/MiniRAG/LiHua-World \
   --qa-file ../external/MiniRAG/dataset/LiHua-World/qa/query_set.csv \
   --output experiments/results/minirag_full_export.jsonl
@@ -80,7 +80,7 @@ python scripts/run_minirag_single_smoke_with_model.py \
 
 1. **Dry-run real Single-hop smoke export**:
    ```bash
-   python tools/external/minirag_exporter.py \
+   python tools/external/run_minirag_tiny_query_export.py \
      --dry-run \
      --qa-file experiments/results/minirag_tiny_single_qa_subset.csv \
      --output experiments/results/minirag_tiny_single_export_dryrun.jsonl \
