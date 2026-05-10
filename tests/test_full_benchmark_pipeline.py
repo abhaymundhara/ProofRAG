@@ -53,6 +53,8 @@ def test_full_benchmark_pipeline_builds_ordered_artifact_commands():
 
     assert [command[1] for command in commands] == [
         "scripts/run_lihua_eval.py",
+        "scripts/run_ablation.py",
+        "scripts/make_publication_tables.py",
         "scripts/score_faithfulness.py",
         "scripts/write_full_benchmark_review.py",
         "scripts/write_external_evidence_manifest.py",
@@ -66,8 +68,10 @@ def test_full_benchmark_pipeline_builds_ordered_artifact_commands():
     assert "--review-note" in gate_command
     assert "--qa-csv" in commands[0]
     assert "--source-resolution-json" in commands[0]
-    assert "--lihua-qa-csv" in commands[2]
-    assert "--qa-csv" not in commands[2]
+    assert "--run" in commands[1]
+    assert "--ablation-json" in commands[2]
+    assert "--lihua-qa-csv" in commands[4]
+    assert "--qa-csv" not in commands[4]
 
 
 def test_full_benchmark_pipeline_dry_run_prints_commands(tmp_path):
@@ -92,5 +96,7 @@ def test_full_benchmark_pipeline_dry_run_prints_commands(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert "scripts/run_lihua_eval.py" in result.stdout
+    assert "scripts/run_ablation.py" in result.stdout
+    assert "scripts/make_publication_tables.py" in result.stdout
     assert "scripts/check_completion_gates.py" in result.stdout
     assert "Full benchmark artifacts written" in result.stdout

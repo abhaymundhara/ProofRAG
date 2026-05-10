@@ -26,6 +26,10 @@ def build_commands(args: argparse.Namespace) -> list[list[str]]:
     comparison_md = output_dir / "full_comparison_table.md"
     comparison_svg = output_dir / "full_comparison_chart.svg"
     source_resolution_json = output_dir / "full_source_resolution.json"
+    ablation_json = output_dir / "full_ablation_summary.json"
+    ablation_md = output_dir / "full_ablation_table.md"
+    ablation_svg = output_dir / "full_ablation_chart.svg"
+    publication_md = output_dir / "full_publication_tables.md"
     faithfulness_json = output_dir / "full_faithfulness_summary.json"
     faithfulness_md = output_dir / "full_faithfulness_table.md"
     review_note = output_dir / "full_benchmark_review.md"
@@ -47,6 +51,28 @@ def build_commands(args: argparse.Namespace) -> list[list[str]]:
             str(comparison_md),
             "--chart-svg",
             str(comparison_svg),
+        ],
+        [
+            sys.executable,
+            "scripts/run_ablation.py",
+            "--run",
+            f"proofrag={proofrag_results}",
+            "--summary-json",
+            str(ablation_json),
+            "--table-md",
+            str(ablation_md),
+            "--chart-svg",
+            str(ablation_svg),
+        ],
+        [
+            sys.executable,
+            "scripts/make_publication_tables.py",
+            "--comparison-json",
+            str(comparison_json),
+            "--ablation-json",
+            str(ablation_json),
+            "--output-md",
+            str(publication_md),
         ],
         [
             sys.executable,
@@ -129,14 +155,14 @@ def build_commands(args: argparse.Namespace) -> list[list[str]]:
     ]
 
     _append_run_lihua_args(commands[0], args, source_resolution_json)
-    for command in commands[2:]:
+    for command in commands[4:]:
         _append_lihua_evidence_args(command, args)
-    for command in commands[2:]:
+    for command in commands[4:]:
         _append_claim_args(command, args)
-    _append_evidence_args(commands[3], args)
-    _append_evidence_args(commands[4], args)
+    _append_evidence_args(commands[5], args)
+    _append_evidence_args(commands[6], args)
     if args.faithfulness_scorer == "llm-judge":
-        _append_judge_args(commands[1], args)
+        _append_judge_args(commands[3], args)
     return commands
 
 

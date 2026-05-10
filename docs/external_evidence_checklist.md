@@ -47,9 +47,9 @@ paper or release reviewer.
      --source-resolution-json experiments/results/full_lihua_source_resolution.json
    ```
 
-   To run the comparison, faithfulness scoring, review-note generation,
-   evidence manifest, and completion-gate checks as one reproducible sequence,
-   use:
+   To run the comparison, ablation, publication-table, faithfulness scoring,
+   review-note generation, evidence manifest, and completion-gate checks as
+   one reproducible sequence, use:
 
    ```bash
    python scripts/run_full_benchmark_pipeline.py \
