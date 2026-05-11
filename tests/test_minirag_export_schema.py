@@ -1,6 +1,10 @@
 import json
 import pytest
-from tools.external.minirag_exporter import validate_minirag_export_row, run_export
+from tools.external.minirag_exporter import (
+    build_cached_hf_embedding_func,
+    validate_minirag_export_row,
+    run_export,
+)
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 
 def test_validate_good_row():
@@ -41,6 +45,11 @@ def test_validate_bad_row():
     with pytest.raises(TypeError):
         validate_minirag_export_row(row)
 
+    row["gold_supporting_sources"] = []
+    row["retrieved_context"] = [{"source_id": "c1", "text": ""}]
+    with pytest.raises(ValueError, match="non-empty text"):
+        validate_minirag_export_row(row)
+
 def test_dry_run_export_compatibility(tmp_path):
     # 1. Create a tiny temp QA file
     qa_file = tmp_path / "tiny_qa.jsonl"
@@ -79,6 +88,61 @@ def test_dry_run_export_compatibility(tmp_path):
     result = adapter.process_item(items[0])
     assert result["id"] == "t1"
     assert "sufficiency_report" in result
+
+
+def test_build_cached_hf_embedding_func_reuses_loaded_model():
+    calls = {"tokenizer": 0, "model": 0}
+
+    class FakeTokenizerFactory:
+        @staticmethod
+        def from_pretrained(name):
+            calls["tokenizer"] += 1
+            return f"tokenizer:{name}"
+
+    class FakeModelFactory:
+        @staticmethod
+        def from_pretrained(name):
+            calls["model"] += 1
+            return f"model:{name}"
+
+    class FakeEmbeddingFunc:
+        def __init__(self, *, embedding_dim, max_token_size, func):
+            self.embedding_dim = embedding_dim
+            self.max_token_size = max_token_size
+            self.func = func
+
+    seen = []
+
+    def fake_hf_embed(texts, *, tokenizer, embed_model):
+        seen.append((texts, tokenizer, embed_model))
+        return [[1.0, 0.0]]
+
+    embedding_func = build_cached_hf_embedding_func(
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        hf_embed=fake_hf_embed,
+        auto_tokenizer=FakeTokenizerFactory,
+        auto_model=FakeModelFactory,
+        embedding_func_cls=FakeEmbeddingFunc,
+    )
+
+    embedding_func.func(["first"])
+    embedding_func.func(["second"])
+
+    assert calls == {"tokenizer": 1, "model": 1}
+    assert embedding_func.embedding_dim == 384
+    assert embedding_func.max_token_size == 1000
+    assert seen == [
+        (
+            ["first"],
+            "tokenizer:sentence-transformers/all-MiniLM-L6-v2",
+            "model:sentence-transformers/all-MiniLM-L6-v2",
+        ),
+        (
+            ["second"],
+            "tokenizer:sentence-transformers/all-MiniLM-L6-v2",
+            "model:sentence-transformers/all-MiniLM-L6-v2",
+        ),
+    ]
 
 def test_run_export_missing_index_files(tmp_path, monkeypatch, capsys):
     # Setup dummy Minirag repo mock to get past import check

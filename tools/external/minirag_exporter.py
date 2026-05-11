@@ -10,6 +10,27 @@ if __package__ is None or __package__ == "":
 
 from tools.external.check_minirag_ready import check_ollama_endpoint
 
+def build_cached_hf_embedding_func(
+    *,
+    embedding_model: str,
+    hf_embed,
+    auto_tokenizer,
+    auto_model,
+    embedding_func_cls,
+):
+    tokenizer = auto_tokenizer.from_pretrained(embedding_model)
+    embed_model = auto_model.from_pretrained(embedding_model)
+    return embedding_func_cls(
+        embedding_dim=384,
+        max_token_size=1000,
+        func=lambda texts: hf_embed(
+            texts,
+            tokenizer=tokenizer,
+            embed_model=embed_model,
+        ),
+    )
+
+
 def parse_evidence_field(evidence_str: str) -> List[str]:
     """Splits 'id1<and>id2' or 'id1, id2' into a list of IDs."""
     if not evidence_str:
@@ -34,6 +55,11 @@ def validate_minirag_export_row(row: Dict[str, Any]):
         raise TypeError(f"gold_supporting_sources must be a list, got {type(row['gold_supporting_sources'])}")
     if not isinstance(row["retrieved_context"], list):
         raise TypeError(f"retrieved_context must be a list, got {type(row['retrieved_context'])}")
+    if not any(
+        isinstance(context, dict) and str(context.get("text") or "").strip()
+        for context in row["retrieved_context"]
+    ):
+        raise ValueError("retrieved_context must include at least one non-empty text field")
 
 def run_export(
     minirag_root: str,
@@ -166,14 +192,12 @@ def run_export(
                 llm_model_max_token_size=2048,
                 llm_model_name=llm_model,
                 llm_model_kwargs=llm_kwargs,
-                embedding_func=EmbeddingFunc(
-                    embedding_dim=384,
-                    max_token_size=1000,
-                    func=lambda texts: hf_embed(
-                        texts,
-                        tokenizer=AutoTokenizer.from_pretrained(embedding_model),
-                        embed_model=AutoModel.from_pretrained(embedding_model),
-                    ),
+                embedding_func=build_cached_hf_embedding_func(
+                    embedding_model=embedding_model,
+                    hf_embed=hf_embed,
+                    auto_tokenizer=AutoTokenizer,
+                    auto_model=AutoModel,
+                    embedding_func_cls=EmbeddingFunc,
                 ),
             )
 
