@@ -9,6 +9,12 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 from proofrag.generation.ollama import OllamaGenerator
 from proofrag.evaluation.answer_metrics import contains_gold_answer, clean_model_answer, is_answer_correct
+from proofrag.evidence.ledger import EvidenceRecord
+from proofrag.generation.strict_verifier import (
+    build_strict_verifier_prompt,
+    is_strict_abstention,
+    rank_evidence_records,
+)
 
 
 def main():
@@ -20,6 +26,17 @@ def main():
     parser.add_argument("--limit", type=int, help="Limit number of examples")
     parser.add_argument("--respect-sufficiency", type=bool, default=True, help="Abstain if sufficiency fails")
     parser.add_argument("--ollama-endpoint-mode", type=str, choices=["chat", "generate"], default="chat", help="Ollama API endpoint")
+    parser.add_argument(
+        "--strict-verifier-prompt",
+        action="store_true",
+        help="Use compact strict verifier prompts with ranked evidence snippets.",
+    )
+    parser.add_argument(
+        "--max-evidence-records",
+        type=int,
+        default=10,
+        help="Maximum evidence records included when --strict-verifier-prompt is set.",
+    )
 
     args = parser.parse_args()
 
@@ -54,6 +71,20 @@ def main():
             processed = adapter.process_item(item)
             report_dict = processed["sufficiency_report"]
             full_prompt = processed["packed_prompt"]
+            if args.strict_verifier_prompt:
+                records = [
+                    EvidenceRecord(**record)
+                    for record in processed["evidence_records"]
+                ]
+                ranked_records = rank_evidence_records(
+                    item.question,
+                    records,
+                    limit=args.max_evidence_records,
+                )
+                full_prompt = build_strict_verifier_prompt(
+                    question=item.question,
+                    records=ranked_records,
+                )
             
             model_called = False
             raw_proofrag_answer = ""
@@ -68,7 +99,10 @@ def main():
                     raw_proofrag_answer = res_meta["content"]
                     proofrag_answer = clean_model_answer(raw_proofrag_answer)
                     thinking = res_meta["thinking"]
-                    model_called = True
+                    model_called = not (
+                        args.strict_verifier_prompt
+                        and is_strict_abstention(proofrag_answer)
+                    )
                 except Exception as e:
                     print(f"Error calling model for {item.id}: {e}")
                     proofrag_answer = f"ERROR: {e}"
@@ -94,7 +128,7 @@ def main():
                 "baseline_contains_gold_answer": baseline_contains_gold_answer,
                 "baseline_correct": baseline_correct,
                 "gold_answer": item.gold_answer,
-                "answer_allowed": report_dict["answer_allowed"],
+                "answer_allowed": bool(report_dict["answer_allowed"] and model_called),
                 "model_called": model_called,
                 "raw_proofrag_generated_answer": raw_proofrag_answer,
                 "proofrag_generated_answer": proofrag_answer,
@@ -104,7 +138,11 @@ def main():
                 "contains_gold_answer_raw": proofrag_contains_gold_answer,
                 "correct_when_answered": proofrag_correct,
                 "coverage_score": report_dict["coverage_score"],
-                "missing_required_slots": report_dict["missing_required_slots"],
+                "missing_required_slots": (
+                    report_dict["missing_required_slots"]
+                    if model_called or not args.strict_verifier_prompt
+                    else ["strict_verifier_abstained"]
+                ),
                 "contract_slot_ids": report_dict.get("contract_slot_ids", []),
                 "evidence_record_slots": [r["supports_slots"] for r in processed["evidence_records"]],
                 "contradiction_count": report_dict["contradiction_count"]

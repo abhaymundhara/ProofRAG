@@ -72,9 +72,22 @@ def generate_date_variants(date_str: str) -> list[str]:
             f"{full} {day_int} {year}",
             f"{short} {day_int} {year}",
             f"{day_int} {full} {year}",
-            f"{day_int} {short} {year}"
+            f"{day_int} {short} {year}",
+            f"{full} {day_int}",
+            f"{short} {day_int}",
+            f"{full} {day_int}th",
+            f"{short} {day_int}th",
         ])
     return variants
+
+
+def _normalize_gold_answer(gold_answer: str) -> str:
+    return re.sub(
+        r"^(?:answer|gold answer)\s*:\s*",
+        "",
+        gold_answer.strip(),
+        flags=re.I,
+    ).strip()
 
 def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     """Checks if the normalized gold answer is contained within the normalized generated answer.
@@ -91,6 +104,7 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     
     # 2. Normalize both
     norm_gen = normalize_answer(clean_gen)
+    gold_answer = _normalize_gold_answer(gold_answer)
     norm_gold = normalize_answer(gold_answer)
     
     norm_gen = norm_gen.replace("water tap", "water tab")
@@ -108,8 +122,8 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
         return True
         
     # 4. Handle "and" cases (e.g. "Tom and Sarah")
-    if " and " in gold_answer.lower():
-        parts = re.split(r'\s+and\s+', gold_answer, flags=re.IGNORECASE)
+    if " and " in gold_answer.lower() or "&" in gold_answer:
+        parts = re.split(r'\s*(?:and|&)\s*', gold_answer, flags=re.IGNORECASE)
         norm_parts = [normalize_answer(p) for p in parts if normalize_answer(p)]
         if norm_parts and all(p in norm_gen for p in norm_parts):
             return True
@@ -127,6 +141,8 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
     if not generated_answer or not gold_answer:
         return False
         
+    gold_answer = _normalize_gold_answer(gold_answer)
+
     # 1. Block common 'incomplete' or 'insufficient' phrases
     block_phrases = [
         "answer is incomplete",
@@ -142,6 +158,9 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
     for phrase in block_phrases:
         if phrase in gen_lower:
             return False
+
+    if gold_answer.lower() in {"yes", "no"}:
+        return _yes_no_answer_matches(generated_answer, gold_answer)
             
     # 2. Clean the generated answer
     clean_gen = clean_model_answer(generated_answer)
@@ -186,13 +205,51 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
         return True
         
     # Multi-part check
-    if " and " in gold_answer.lower():
-        parts = re.split(r'\s+and\s+', gold_answer, flags=re.IGNORECASE)
+    if " and " in gold_answer.lower() or "&" in gold_answer:
+        parts = re.split(r'\s*(?:and|&)\s*', gold_answer, flags=re.IGNORECASE)
         norm_parts = [normalize_answer(p) for p in parts if normalize_answer(p)]
         if norm_parts and all(p in norm_gen for p in norm_parts):
             return True
+
+    if _matches_negated_damage_paraphrase(norm_gen, norm_gold):
+        return True
             
     return False
+
+
+def _yes_no_answer_matches(generated_answer: str, gold_answer: str) -> bool:
+    text = strip_citations(clean_model_answer(generated_answer)).lower()
+    first_clause = " ".join(text.split()[:40])
+    explicit = re.search(r"\b(yes|no)\b", first_clause)
+    if explicit:
+        return explicit.group(1) == gold_answer.lower()
+    negated = re.search(
+        r"\b(?:no|not|cannot|can't)\b|did not|does not|do not|can not",
+        first_clause,
+    )
+    return gold_answer.lower() == ("no" if negated else "yes")
+
+
+def _matches_negated_damage_paraphrase(norm_gen: str, norm_gold: str) -> bool:
+    if "not damage" not in norm_gold:
+        return False
+    has_damage_condition = any(
+        phrase in norm_gen
+        for phrase in (
+            "not damage",
+            "doesnt damage",
+            "doesn t damage",
+            "without damaging",
+        )
+    )
+    if not has_damage_condition:
+        return False
+    required = [
+        token
+        for token in norm_gold.replace("not damage", "").split()
+        if len(token) > 3 and token not in {"must", "anything"}
+    ]
+    return all(token in norm_gen for token in required)
 
 def extract_entities_from_answer(text: str) -> Set[str]:
     """Simple heuristic to extract capitalized words (potential entities) from text."""

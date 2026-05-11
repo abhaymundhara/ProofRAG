@@ -33,6 +33,24 @@ def test_date_variants_normalization():
     assert is_answer_correct("Jan 8, 2026", "20260108")
     assert is_answer_correct("8 January 2026", "20260108")
     assert is_answer_correct("The event is on 20260108.", "20260108")
+    assert is_answer_correct("Li Hua plans to celebrate on Jan 18th.", "20260118")
+
+
+def test_answer_prefix_and_yes_no_normalization():
+    assert is_answer_correct("Yes. Evidence [1] supports it.", "Answer: Yes")
+    assert is_answer_correct("No, the ordering is reversed.", "No")
+    assert not is_answer_correct("No, the ordering is reversed.", "Answer: Yes")
+
+
+def test_ampersand_and_negated_damage_paraphrases():
+    assert is_answer_correct(
+        "Jennifer suggests hydration, active recovery, stretching, foam rolling, and rest.",
+        "hydration&active recovery&stretching&foam rolling&rest",
+    )
+    assert is_answer_correct(
+        "It is allowed as long as it is reversible and doesn't damage anything.",
+        "must be reversible and not damage anything",
+    )
 
 def test_source_id_isolation():
     # An answer that only contains 'record_id=minirag-lihua-single-0002-0-src0' should not count as correct for date gold '20260108'
