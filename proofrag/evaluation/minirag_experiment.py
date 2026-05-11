@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel
 
+from proofrag.evaluation.answer_metrics import is_answer_correct
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
 
 
@@ -22,8 +23,14 @@ class MiniRAGExperimentResult(BaseModel):
     indirect_evidence_count: int
     background_evidence_count: int
     packed_prompt_preview: str
+    baseline_correct: bool
+    proofrag_generated_answer: str
+    correct_when_answered: bool
+    answer_correct: bool
+    model_called: bool
     
     # Heuristic metrics
+    expected_answer_allowed: bool
     heuristic_expected_allowed: bool
     heuristic_pass: bool
     heuristic_failure_reason: Optional[str]
@@ -48,11 +55,18 @@ class MiniRAGExperimentRunner:
                 records = adapter_result["evidence_records"]
                 
                 # 2. Heuristic validation
-                retrieved_ids = {ctx["source_id"] for ctx in item.retrieved_context}
+                retrieved_ids = _retrieved_source_ids(item.retrieved_context, records)
                 gold_ids = set(item.gold_supporting_sources)
                 
                 # Check if all gold sources are retrieved
-                has_all_gold = gold_ids.issubset(retrieved_ids) if gold_ids else True
+                has_all_gold = (
+                    all(
+                        any(_source_ids_match(gold_id, retrieved_id) for retrieved_id in retrieved_ids)
+                        for gold_id in gold_ids
+                    )
+                    if gold_ids
+                    else True
+                )
                 
                 # Check if any retrieved context was marked as contradiction
                 # (Adapter marks it in evidence_records)
@@ -75,6 +89,15 @@ class MiniRAGExperimentRunner:
                 direct = sum(1 for r in records if r["evidence_strength"] == "direct")
                 indirect = sum(1 for r in records if r["evidence_strength"] == "indirect")
                 background = sum(1 for r in records if r["evidence_strength"] == "background")
+                baseline_correct = is_answer_correct(
+                    item.baseline_answer,
+                    item.gold_answer,
+                    source_ids=item.gold_supporting_sources,
+                )
+                proofrag_generated_answer = (
+                    item.baseline_answer if report["answer_allowed"] else ""
+                )
+                correct_when_answered = bool(report["answer_allowed"] and baseline_correct)
 
                 res = MiniRAGExperimentResult(
                     id=item.id,
@@ -93,6 +116,12 @@ class MiniRAGExperimentRunner:
                     indirect_evidence_count=indirect,
                     background_evidence_count=background,
                     packed_prompt_preview=adapter_result["packed_prompt_preview"],
+                    baseline_correct=baseline_correct,
+                    proofrag_generated_answer=proofrag_generated_answer,
+                    correct_when_answered=correct_when_answered,
+                    answer_correct=correct_when_answered,
+                    model_called=report["answer_allowed"],
+                    expected_answer_allowed=heuristic_expected,
                     heuristic_expected_allowed=heuristic_expected,
                     heuristic_pass=heuristic_pass,
                     heuristic_failure_reason=failure_reason
@@ -140,3 +169,33 @@ class MiniRAGExperimentRunner:
             print(f"{r.id:<20} | {str(r.answer_allowed):<7} | "
                   f"{str(r.heuristic_expected_allowed):<9} | {status}")
         print("-" * 80 + "\n")
+
+
+def _retrieved_source_ids(
+    retrieved_context: list[dict],
+    evidence_records: list[dict],
+) -> set[str]:
+    ids = {str(context.get("source_id", "")) for context in retrieved_context}
+    for record in evidence_records:
+        source_id = str(record.get("source_id", ""))
+        if source_id:
+            ids.add(source_id)
+            if "#src" in source_id:
+                ids.add(source_id.rsplit("#src", 1)[-1])
+    return {source_id for source_id in ids if source_id}
+
+
+def _source_ids_match(left: str, right: str) -> bool:
+    return _source_id_variants(left) & _source_id_variants(right) != set()
+
+
+def _source_id_variants(source_id: str) -> set[str]:
+    text = str(source_id).strip()
+    compact = text.replace(":", "").replace("_", "").replace("-", "")
+    return {
+        text,
+        text.replace(":", ""),
+        text.replace(":", "_"),
+        text.replace(":", "-"),
+        compact,
+    }

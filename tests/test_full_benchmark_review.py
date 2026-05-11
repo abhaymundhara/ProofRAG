@@ -98,6 +98,28 @@ def test_build_full_benchmark_review_from_artifacts(tmp_path: Path):
     assert "Rows with empty retrieved context: none" in review
 
 
+def test_build_full_benchmark_review_resolves_lihua_sources(tmp_path: Path):
+    args = _args(tmp_path)
+    qa_csv = tmp_path / "query_set.csv"
+    qa_csv.write_text(
+        "Question,Gold Answer,Evidence,Type\n"
+        "When did Li Hua check in?,5:30 PM,20260105_14:00,Single\n",
+        encoding="utf-8",
+    )
+    data_dir = tmp_path / "LiHua-World"
+    data_dir.mkdir()
+    (data_dir / "20260105_1400.txt").write_text(
+        "Time: 20260105_14:00\nLiHua checked in at 5:30 PM.\n",
+        encoding="utf-8",
+    )
+    args.lihua_qa_csv = str(qa_csv)
+    args.lihua_data_dir = str(data_dir)
+
+    review = build_review(args)
+
+    assert "Evidence-ID source-resolution rate: 1 QA rows; 1/1 evidence IDs resolved (100.0%)" in review
+
+
 def test_full_benchmark_review_cli_writes_gate_valid_note(tmp_path: Path):
     args = _args(tmp_path)
     result = subprocess.run(

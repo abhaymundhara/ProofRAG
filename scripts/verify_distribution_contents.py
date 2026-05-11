@@ -49,6 +49,7 @@ REQUIRED_SDIST_PATHS = (
     "scripts/check_roadmap_artifacts.py",
     "scripts/validate_publication_claims.py",
     "tools/external/minirag_exporter.py",
+    "tools/external/run_minirag_chunk_index.py",
     "tools/external/run_minirag_tiny_query_export.py",
     "tests/test_release_checks.py",
     "tests/test_completion_readiness_audit.py",

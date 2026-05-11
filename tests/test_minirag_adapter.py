@@ -120,6 +120,23 @@ LiHua: the water tab in the apartment is broken"
     assert rows[1]["id"] == "1"
     assert "water tab" in rows[1]["content"]
 
+
+def test_extract_raw_time_delimited_minirag_rows():
+    adapter = MiniRAGOutputAdapter()
+    text = (
+        "Time: 20260105_14:00\n"
+        "LiHua: I'll be there around 5:30 PM.\n"
+        "--New Chunk--\n"
+        "Time: 20260108_11:00\n"
+        "WolfgangSchulz: Lunch is at 12:00."
+    )
+
+    rows = adapter.extract_source_rows(text)
+
+    assert [row["id"] for row in rows] == ["20260105_14:00", "20260108_11:00"]
+    assert "5:30 PM" in rows[0]["content"]
+    assert "Lunch" in rows[1]["content"]
+
 def test_lihua_single_0008_regression():
     adapter = MiniRAGOutputAdapter()
     text = '''

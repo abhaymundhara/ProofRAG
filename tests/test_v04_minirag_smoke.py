@@ -166,3 +166,37 @@ def test_tiny_index_entrypoint_dry_run_accepts_model_flags(tmp_path):
 
     assert result.returncode == 0, result.stderr
     assert (index_dir / "mock_index.txt").exists()
+
+
+def test_chunk_index_entrypoint_dry_run(tmp_path):
+    import subprocess
+    import sys
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "source.txt").write_text("LiHua confirmed the appointment.", encoding="utf-8")
+    index_dir = tmp_path / "chunk-index"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "tools/external/run_minirag_chunk_index.py",
+            "--minirag-dir",
+            "/tmp/missing-minirag-ok-for-dry-run",
+            "--data-dir",
+            str(data_dir),
+            "--working-dir",
+            str(index_dir),
+            "--llm-model",
+            "llama3.2:1b",
+            "--embedding-model",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "--dry-run",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (index_dir / "chunk_index_dry_run.txt").exists()

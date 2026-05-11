@@ -14,12 +14,20 @@ def test_runner_consumes_sample_export():
     res1 = next(r for r in results if r.id == "lihua-sample-001")
     assert res1.answer_allowed is True
     assert res1.heuristic_pass is True
+    assert res1.baseline_correct is True
+    assert res1.correct_when_answered is True
+    assert res1.proofrag_generated_answer == res1.baseline_answer
+    assert res1.expected_answer_allowed is True
     
     # lihua-sample-002: missing direct evidence, should block answer
     # Only doc-001 is retrieved, but doc-002 is gold
     res2 = next(r for r in results if r.id == "lihua-sample-002")
     assert res2.answer_allowed is False
     assert res2.heuristic_pass is True
+    assert res2.baseline_correct is False
+    assert res2.correct_when_answered is False
+    assert res2.proofrag_generated_answer == ""
+    assert res2.expected_answer_allowed is False
     
     # lihua-sample-003: contradiction present, should block answer
     # doc-003 has contradiction metadata

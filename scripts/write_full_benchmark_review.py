@@ -56,7 +56,7 @@ def _lihua_resolution(qa_csv: str | None, data_dir: str | None) -> str:
     )
     if not evidence_ids:
         return f"{len(rows)} QA rows; no evidence IDs found"
-    resolution = resolve_lihua_sources(evidence_ids, Path(data_dir))
+    resolution = resolve_lihua_sources(evidence_ids=evidence_ids, data_dir=Path(data_dir))
     ratio = len(resolution.files) / len(evidence_ids)
     return (
         f"{len(rows)} QA rows; {len(resolution.files)}/{len(evidence_ids)} "

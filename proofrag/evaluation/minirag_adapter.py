@@ -72,14 +72,14 @@ class MiniRAGOutputAdapter:
         sources_marker = "-----Sources-----"
         marker_index = text.find(sources_marker)
         if marker_index == -1:
-            return [{"id": "raw", "content": text}]
+            return self._extract_time_delimited_rows(text)
         sources_text = text[marker_index + len(sources_marker):]
         fence_match = re.search(r"```csv\s*(.*?)\s*```", sources_text, re.DOTALL | re.IGNORECASE)
         if not fence_match:
-            return [{"id": "raw", "content": text}]
+            return self._extract_time_delimited_rows(text)
         csv_text = fence_match.group(1).strip()
         if not csv_text:
-            return [{"id": "raw", "content": text}]
+            return self._extract_time_delimited_rows(text)
         try:
             reader = csv.DictReader(io.StringIO(csv_text))
             rows: list[Dict[str, str]] = []
@@ -93,7 +93,16 @@ class MiniRAGOutputAdapter:
                     })
             return rows or [{"id": "raw", "content": text}]
         except Exception:
-            return [{"id": "raw", "content": text}]
+            return self._extract_time_delimited_rows(text)
+
+    def _extract_time_delimited_rows(self, text: str) -> List[Dict[str, str]]:
+        chunks = [chunk.strip() for chunk in text.split("--New Chunk--") if chunk.strip()]
+        rows: list[Dict[str, str]] = []
+        for index, chunk in enumerate(chunks):
+            match = re.search(r"^\s*Time:\s*([0-9]{8}[_:][0-9]{2}:?[0-9]{2})", chunk, re.MULTILINE)
+            source_id = match.group(1) if match else f"raw-{index}"
+            rows.append({"id": source_id, "content": chunk})
+        return rows or [{"id": "raw", "content": text}]
 
     def process_item(self, item: NormalizedRAGExportItem) -> Dict[str, Any]:
         """Convert a normalized external RAG item into ProofRAG artifacts."""

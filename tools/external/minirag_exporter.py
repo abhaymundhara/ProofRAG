@@ -110,6 +110,9 @@ def run_export(
                 if line.strip():
                     records.append(json.loads(line))
 
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     # 2. Export / Run MiniRAG
     output_records = []
     if dry_run:
@@ -142,6 +145,7 @@ def run_export(
                 "baseline_metrics": {},
                 "retrieval_mode": mode
             }
+            validate_minirag_export_row(export_item)
             output_records.append(export_item)
     else:
         # Real MiniRAG integration
@@ -224,35 +228,39 @@ def run_export(
                 "Running real MiniRAG export "
                 f"(working_dir={working_dir}, mode={mode}, llm_model={llm_model})..."
             )
-            for rec in records:
-                question = rec["question"]
-                print(f"  Querying: {question}")
-                context_text, baseline_answer = loop.run_until_complete(get_results(question))
-                
-                export_item = {
-                    "id": rec.get("id"),
-                    "dataset": rec.get("dataset", "LiHua-World"),
-                    "question": question,
-                    "query_type": rec.get("query_type", "Single"),
-                    "gold_answer": rec.get("gold_answer", "Unknown"),
-                    "gold_supporting_sources": rec.get("gold_supporting_sources", []),
-                    "retrieved_context": [
-                        {
-                            "source_id": "minirag-retrieval",
-                            "text": context_text,
-                            "metadata": {
-                                "mode": mode,
-                                "llm_model": llm_model,
-                                "embedding_model": embedding_model,
+            with open(output_path, "w", encoding="utf-8") as f:
+                for rec in records:
+                    question = rec["question"]
+                    print(f"  Querying: {question}")
+                    context_text, baseline_answer = loop.run_until_complete(get_results(question))
+
+                    export_item = {
+                        "id": rec.get("id"),
+                        "dataset": rec.get("dataset", "LiHua-World"),
+                        "question": question,
+                        "query_type": rec.get("query_type", "Single"),
+                        "gold_answer": rec.get("gold_answer", "Unknown"),
+                        "gold_supporting_sources": rec.get("gold_supporting_sources", []),
+                        "retrieved_context": [
+                            {
+                                "source_id": "minirag-retrieval",
+                                "text": context_text,
+                                "metadata": {
+                                    "mode": mode,
+                                    "llm_model": llm_model,
+                                    "embedding_model": embedding_model,
+                                }
                             }
-                        }
-                    ],
-                    "baseline_answer": baseline_answer,
-                    "baseline_method": "minirag",
-                    "baseline_metrics": {},
-                    "retrieval_mode": mode
-                }
-                output_records.append(export_item)
+                        ],
+                        "baseline_answer": baseline_answer,
+                        "baseline_method": "minirag",
+                        "baseline_metrics": {},
+                        "retrieval_mode": mode
+                    }
+                    validate_minirag_export_row(export_item)
+                    f.write(json.dumps(export_item) + "\n")
+                    f.flush()
+                    output_records.append(export_item)
             loop.close()
             
         except Exception as e:
@@ -261,12 +269,12 @@ def run_export(
             traceback.print_exc()
             sys.exit(1)
 
-    # 3. Write output
-    output_path = Path(output_file)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        for item in output_records:
-            f.write(json.dumps(item) + "\n")
+    # 3. Write dry-run output. Real MiniRAG rows are streamed as each row
+    # completes so long evidence runs leave an auditable partial JSONL file.
+    if dry_run:
+        with open(output_path, "w", encoding="utf-8") as f:
+            for item in output_records:
+                f.write(json.dumps(item) + "\n")
     
     return len(output_records)
 
