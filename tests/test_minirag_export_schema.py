@@ -123,3 +123,39 @@ def test_run_export_missing_index_files(tmp_path, monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "required index files are missing" in captured.out
     assert "vdb_entities.json" in captured.out
+
+
+def test_run_export_checks_ollama_before_importing_heavy_dependencies(tmp_path, capsys):
+    minirag_root = tmp_path / "minirag"
+    minirag_root.mkdir()
+    working_dir = tmp_path / "working"
+    working_dir.mkdir()
+    for filename in [
+        "vdb_chunks.json",
+        "vdb_entities.json",
+        "vdb_entities_name.json",
+        "vdb_relationships.json",
+    ]:
+        (working_dir / filename).write_text("{}", encoding="utf-8")
+    qa_file = tmp_path / "qa.jsonl"
+    qa_file.write_text(
+        '{"id":"t1", "question":"Q", "gold_answer":"A", "gold_supporting_sources":[]}\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        run_export(
+            minirag_root=str(minirag_root),
+            working_dir=str(working_dir),
+            qa_file=str(qa_file),
+            output_file=str(tmp_path / "out.jsonl"),
+            dry_run=False,
+            mode="mini",
+            llm_model="qwen3.5:4b",
+            ollama_host="http://127.0.0.1:9",
+            embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+        )
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert "Ollama endpoint is not reachable" in captured.out

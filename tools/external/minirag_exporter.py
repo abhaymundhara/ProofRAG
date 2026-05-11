@@ -5,6 +5,11 @@ import csv
 from pathlib import Path
 from typing import List, Dict, Any
 
+if __package__ is None or __package__ == "":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from tools.external.check_minirag_ready import check_ollama_endpoint
+
 def parse_evidence_field(evidence_str: str) -> List[str]:
     """Splits 'id1<and>id2' or 'id1, id2' into a list of IDs."""
     if not evidence_str:
@@ -136,6 +141,12 @@ def run_export(
 
             if missing_files:
                 raise FileNotFoundError(f"Cannot run mode '{mode}' because required index files are missing in {working_dir}: {missing_files}. Please run the indexing script (e.g. tools/external/run_minirag_tiny_index.py) first.")
+
+            if ollama_host and not check_ollama_endpoint(ollama_host):
+                raise ConnectionError(
+                    f"Ollama endpoint is not reachable at {ollama_host}. "
+                    "Start or repair the endpoint before running a real MiniRAG export."
+                )
 
             from minirag import MiniRAG
             from minirag.minirag import QueryParam
