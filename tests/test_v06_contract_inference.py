@@ -16,6 +16,14 @@ def test_contract_inference_rules():
     c3 = infer_contract_from_question("Who asked LiHua about the move?")
     assert "who_asked" in [s.slot_id for s in c3.slots]
     assert "topic_context" in [s.slot_id for s in c3.slots]
+
+    # Temporal order
+    c_order = infer_contract_from_question(
+        "Did Li Hua ask Thane about The Last of Us before he asked about Sekiro?"
+    )
+    assert c_order.query_type == "temporal_order_query"
+    assert "event_a" in [s.slot_id for s in c_order.slots]
+    assert "event_b" in [s.slot_id for s in c_order.slots]
     
     # Other
     c4 = infer_contract_from_question("Is the place nice?")
@@ -45,6 +53,14 @@ def test_minirag_adapter_evidence_mapping():
     inf3 = adapter._infer_evidence(text3, q3, {})
     # Should NOT have event_context because dinner vs lunch
     assert "event_context" not in inf3["supports_slots"]
+
+    # 4. Temporal order query separates both event clauses.
+    q4 = "Did Li Hua ask Thane about The Last of Us before he asked about Sekiro?"
+    inf4a = adapter._infer_evidence("LiHua: What do you think about The Last of Us?", q4, {})
+    inf4b = adapter._infer_evidence("LiHua: What do you think about Sekiro?", q4, {})
+    assert "event_a" in inf4a["supports_slots"]
+    assert "event_b" not in inf4a["supports_slots"]
+    assert "event_b" in inf4b["supports_slots"]
 
 def test_source_id_date_detection():
     adapter = MiniRAGOutputAdapter()

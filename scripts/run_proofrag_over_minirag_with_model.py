@@ -14,6 +14,7 @@ from proofrag.evidence.ledger import EvidenceRecord
 from proofrag.generation.strict_verifier import (
     build_strict_verifier_prompt,
     is_strict_abstention,
+    is_uncertainty_abstention,
     rank_evidence_records,
 )
 
@@ -107,8 +108,11 @@ def main():
                     proofrag_answer = clean_model_answer(raw_proofrag_answer)
                     thinking = res_meta["thinking"]
                     model_called = not (
-                        args.strict_verifier_prompt
-                        and is_strict_abstention(proofrag_answer)
+                        (
+                            args.strict_verifier_prompt
+                            and is_strict_abstention(proofrag_answer)
+                        )
+                        or is_uncertainty_abstention(proofrag_answer)
                     )
                 except Exception as e:
                     print(f"Error calling model for {item.id}: {e}")

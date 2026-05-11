@@ -50,7 +50,17 @@ def infer_evidence_from_text(
     if "dry-run placeholder context" in t_lower:
         return EvidenceInference()
 
-    if "what time" in q_lower:
+    temporal_clauses = _temporal_order_clauses(q_lower)
+    if temporal_clauses:
+        event_a, event_b = temporal_clauses
+        if _clause_matches_evidence(event_a, t_lower):
+            supports_slots.append("event_a")
+        if _clause_matches_evidence(event_b, t_lower):
+            supports_slots.append("event_b")
+        if supports_slots:
+            evidence_strength = "direct"
+
+    elif "what time" in q_lower:
         if _contains_time(text):
             supports_slots.append("time_answer")
             evidence_strength = "direct"
@@ -158,10 +168,93 @@ def _is_direct_general_answer(
     return (is_what_does and has_strong_pattern) or overlap
 
 
+_TEMPORAL_SPLIT_RE = re.compile(r"\b(before|after)\b", re.I)
+
+
+def _temporal_order_clauses(question_lower: str) -> tuple[str, str] | None:
+    match = _TEMPORAL_SPLIT_RE.search(question_lower)
+    if not match:
+        return None
+    left = question_lower[: match.start()]
+    right = question_lower[match.end() :]
+    left = re.sub(r"^(?:question\s*:\s*)?(?:did|does|do|has|have|had|is|was|were|can|could)\s+", "", left).strip()
+    right = right.strip(" ?.")
+    if not left or not right:
+        return None
+    return left, right
+
+
+_CLAUSE_STOPWORDS = {
+    "about",
+    "adam",
+    "after",
+    "ask",
+    "asked",
+    "asking",
+    "before",
+    "chae",
+    "does",
+    "doing",
+    "from",
+    "hailey",
+    "have",
+    "hua",
+    "hwang",
+    "illidan",
+    "into",
+    "jake",
+    "jennifer",
+    "lihua",
+    "moore",
+    "message",
+    "question",
+    "schulz",
+    "send",
+    "sent",
+    "smith",
+    "song",
+    "thane",
+    "that",
+    "their",
+    "them",
+    "they",
+    "this",
+    "turalyon",
+    "with",
+    "wolfgang",
+    "yuriko",
+    "yamamoto",
+}
+
+
+def _clause_keywords(clause: str) -> list[str]:
+    return [
+        _stem_token(word)
+        for word in re.findall(r"[a-z0-9]+", clause.lower())
+        if len(word) > 3 and word not in _CLAUSE_STOPWORDS
+    ]
+
+
+def _clause_matches_evidence(clause: str, text_lower: str) -> bool:
+    keywords = _clause_keywords(clause)
+    if not keywords:
+        return False
+    text_tokens = {_stem_token(word) for word in re.findall(r"[a-z0-9]+", text_lower)}
+    matched = sum(1 for keyword in keywords if keyword in text_tokens)
+    required = len(keywords) if len(keywords) <= 2 else min(3, (len(keywords) + 1) // 2)
+    return matched >= required
+
+
+def _stem_token(word: str) -> str:
+    for suffix in ("ing", "ed", "s"):
+        if len(word) > len(suffix) + 3 and word.endswith(suffix):
+            return word[: -len(suffix)]
+    return word
+
+
 def _dedupe(values: list[str]) -> list[str]:
     deduped: list[str] = []
     for value in values:
         if value not in deduped:
             deduped.append(value)
     return deduped
-

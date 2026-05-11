@@ -2,6 +2,7 @@ from proofrag.evidence.ledger import EvidenceRecord
 from proofrag.generation.strict_verifier import (
     build_strict_verifier_prompt,
     is_strict_abstention,
+    is_uncertainty_abstention,
     question_kind,
     rank_evidence_records,
 )
@@ -55,3 +56,9 @@ def test_build_strict_verifier_prompt_separates_question_types():
 def test_is_strict_abstention():
     assert is_strict_abstention("Insufficient evidence. [1] is not enough.")
     assert not is_strict_abstention("Yes. Evidence [1].")
+
+
+def test_uncertainty_abstention_detection():
+    assert is_uncertainty_abstention("There is no record of Li Hua asking about that.")
+    assert is_uncertainty_abstention("Cannot be determined from the provided evidence.")
+    assert not is_uncertainty_abstention("No, the event happened after the reminder.")

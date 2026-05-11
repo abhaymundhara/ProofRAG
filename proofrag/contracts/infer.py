@@ -7,6 +7,25 @@ from proofrag.contracts.schema import EvidenceSlot, EvidenceContract
 def infer_contract_from_question(question: str) -> EvidenceContract:
     """Infers an EvidenceContract from a question string using rule-based heuristics."""
     q_lower = question.lower()
+
+    if " before " in q_lower or " after " in q_lower:
+        slots = [
+            EvidenceSlot(
+                slot_id="event_a",
+                description="Evidence for the first event mentioned in a temporal-order question",
+                evidence_type="temporal_event",
+                required=True,
+                min_sources=1,
+            ),
+            EvidenceSlot(
+                slot_id="event_b",
+                description="Evidence for the second event mentioned in a temporal-order question",
+                evidence_type="temporal_event",
+                required=True,
+                min_sources=1,
+            ),
+        ]
+        return EvidenceContract(question=question, query_type="temporal_order_query", slots=slots)
     
     if "what time" in q_lower:
         slots = [

@@ -122,7 +122,30 @@ def build_strict_verifier_prompt(
 def is_strict_abstention(answer: str) -> bool:
     """Return True when the verifier declined to answer."""
 
-    return answer.strip().lower().startswith("insufficient evidence")
+    return _normalized_answer(answer).startswith("insufficient evidence")
+
+
+def is_uncertainty_abstention(answer: str) -> bool:
+    """Return True when a generated answer admits missing evidence."""
+
+    normalized = _normalized_answer(answer)
+    uncertainty_patterns = (
+        "no record",
+        "no evidence",
+        "no mention",
+        "no information",
+        "there is no record",
+        "there is no evidence",
+        "not enough information",
+        "insufficient evidence",
+        "cannot be confirmed",
+        "cannot be determined",
+    )
+    return any(pattern in normalized for pattern in uncertainty_patterns)
+
+
+def _normalized_answer(answer: str) -> str:
+    return " ".join(answer.strip().lower().split())
 
 
 def _record_relevance(question: str, record: EvidenceRecord) -> int:
