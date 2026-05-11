@@ -53,6 +53,17 @@ Check if your environment is ready for real MiniRAG integration:
 python tools/external/check_minirag_ready.py
 ```
 
+When validating a real MiniRAG run, include the same Ollama endpoint that the
+index/export commands will use:
+
+```bash
+python tools/external/check_minirag_ready.py \
+  --minirag-dir ../external/MiniRAG \
+  --working-dir ../external/MiniRAG/LiHua-World \
+  --qa-file ../external/MiniRAG/dataset/LiHua-World/qa/query_set.csv \
+  --ollama-host http://127.0.0.1:11434
+```
+
 ### Source Data Resolution (LiHua-World)
 
 Before running real indexing, you can inspect the data layout and resolve the specific chat records needed for the tiny smoke test:

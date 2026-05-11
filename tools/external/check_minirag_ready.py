@@ -1,14 +1,31 @@
-import os
 import sys
 import argparse
+import importlib
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
 
-def check_minirag_ready(minirag_dir="../external/MiniRAG", qa_file=None, working_dir=None):
+def check_ollama_endpoint(ollama_host: str, timeout_seconds: float = 2.0) -> bool:
+    """Return whether an Ollama-compatible tags endpoint is reachable."""
+    try:
+        with urlopen(f"{ollama_host.rstrip('/')}/api/tags", timeout=timeout_seconds) as response:
+            return 200 <= response.status < 300
+    except (OSError, URLError, ValueError):
+        return False
+
+
+def check_minirag_ready(
+    minirag_dir="../external/MiniRAG",
+    qa_file=None,
+    working_dir=None,
+    ollama_host=None,
+):
     """Checks if MiniRAG environment is set up and index stores exist."""
     status = {
         "repo_importable": False,
         "chunk_db_available": False,
         "graph_stores_available": False,
+        "ollama_endpoint_available": False,
         "mini_mode_runnable": False,
         "qa_file": False
     }
@@ -24,11 +41,14 @@ def check_minirag_ready(minirag_dir="../external/MiniRAG", qa_file=None, working
         try:
             if str(external_path) not in sys.path:
                 sys.path.append(str(external_path))
-            import minirag
+            importlib.import_module("minirag")
             status["repo_importable"] = True
         except ImportError:
             pass
-            
+
+    if ollama_host:
+        status["ollama_endpoint_available"] = check_ollama_endpoint(ollama_host)
+
     # Check working dir index stores if provided
     if working_dir:
         wd_path = Path(working_dir)
@@ -43,7 +63,12 @@ def check_minirag_ready(minirag_dir="../external/MiniRAG", qa_file=None, working
             status["graph_stores_available"] = True
             
         # 4. Check mini mode runnable
-        if status["repo_importable"] and status["chunk_db_available"] and status["graph_stores_available"]:
+        if (
+            status["repo_importable"]
+            and status["chunk_db_available"]
+            and status["graph_stores_available"]
+            and (not ollama_host or status["ollama_endpoint_available"])
+        ):
             status["mini_mode_runnable"] = True
 
     return status
@@ -53,12 +78,14 @@ def main():
     parser.add_argument("--minirag-dir", type=str, default="../external/MiniRAG", help="Path to MiniRAG repo")
     parser.add_argument("--qa-file", type=str, default="../external/MiniRAG/dataset/LiHua-World/qa/query_set.csv", help="Path to QA file")
     parser.add_argument("--working-dir", type=str, help="Path to MiniRAG workspace")
+    parser.add_argument("--ollama-host", help="Optional Ollama host URL to check, e.g. http://127.0.0.1:11434")
     args = parser.parse_args()
     
     status = check_minirag_ready(
         minirag_dir=args.minirag_dir,
         qa_file=args.qa_file,
-        working_dir=args.working_dir
+        working_dir=args.working_dir,
+        ollama_host=args.ollama_host,
     )
     
     print("--- MiniRAG Readiness Check ---")
@@ -67,11 +94,16 @@ def main():
     if args.working_dir:
         print(f"{'✅' if status['chunk_db_available'] else '❌'} Chunk vector DB available")
         print(f"{'✅' if status['graph_stores_available'] else '❌'} Entity/relationship graph stores available")
+        if args.ollama_host:
+            print(f"{'✅' if status['ollama_endpoint_available'] else '❌'} Ollama endpoint reachable")
         print(f"{'✅' if status['mini_mode_runnable'] else '❌'} Mini mode runnable")
         
         if not status["mini_mode_runnable"]:
-            print("\nError: Mini mode cannot run because graph index files are missing.")
-            print(f"Please run the indexing command on {args.working_dir}.")
+            print("\nError: Mini mode cannot run with the supplied environment.")
+            if not status["chunk_db_available"] or not status["graph_stores_available"]:
+                print(f"Please run the indexing command on {args.working_dir}.")
+            if args.ollama_host and not status["ollama_endpoint_available"]:
+                print(f"Please make sure Ollama is reachable at {args.ollama_host}.")
             sys.exit(1)
         else:
             print("\nStatus: READY for mini mode.")

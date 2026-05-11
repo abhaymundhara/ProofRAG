@@ -1,6 +1,6 @@
 import json
 from tools.external.minirag_exporter import parse_evidence_field
-from tools.external.check_minirag_ready import check_minirag_ready
+from tools.external.check_minirag_ready import check_minirag_ready, check_ollama_endpoint
 
 def test_parse_evidence_field():
     # Test <and> separator
@@ -18,6 +18,10 @@ def test_check_minirag_ready_graceful():
     assert isinstance(status, dict)
     assert "mini_mode_runnable" in status
     assert status["mini_mode_runnable"] is False
+    assert "ollama_endpoint_available" in status
+
+def test_check_ollama_endpoint_handles_unreachable_host():
+    assert check_ollama_endpoint("http://127.0.0.1:9", timeout_seconds=0.1) is False
 
 def test_check_minirag_ready_parser_flags():
     import subprocess
@@ -32,6 +36,7 @@ def test_check_minirag_ready_parser_flags():
     subprocess.run(base_cmd + ["--minirag-dir", "/tmp"], check=False, capture_output=True)
     subprocess.run(base_cmd + ["--qa-file", "/tmp/file"], check=False, capture_output=True)
     subprocess.run(base_cmd + ["--working-dir", "/tmp"], check=False, capture_output=True)
+    subprocess.run(base_cmd + ["--ollama-host", "http://127.0.0.1:11434"], check=False, capture_output=True)
 
 def test_check_minirag_ready_fails_when_missing():
     import subprocess
