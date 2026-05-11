@@ -30,7 +30,18 @@ def validate_minirag_export_row(row: Dict[str, Any]):
     if not isinstance(row["retrieved_context"], list):
         raise TypeError(f"retrieved_context must be a list, got {type(row['retrieved_context'])}")
 
-def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: str, dry_run: bool = False, limit: int = None, mode: str = "mini"):
+def run_export(
+    minirag_root: str,
+    working_dir: str,
+    qa_file: str,
+    output_file: str,
+    dry_run: bool = False,
+    limit: int = None,
+    mode: str = "mini",
+    llm_model: str = "qwen3.5:4b",
+    ollama_host: str | None = None,
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
+):
     """Core export logic shared between CLI and tests."""
     qa_path = Path(qa_file)
     if not qa_path.exists():
@@ -134,20 +145,23 @@ def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: s
             from transformers import AutoModel, AutoTokenizer
             import asyncio
             
-            EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-            
+            llm_kwargs = {}
+            if ollama_host:
+                llm_kwargs["host"] = ollama_host
+
             rag = MiniRAG(
                 working_dir=working_dir,
                 llm_model_func=ollama_model_complete,
                 llm_model_max_token_size=2048,
-                llm_model_name="qwen3.5:4b",
+                llm_model_name=llm_model,
+                llm_model_kwargs=llm_kwargs,
                 embedding_func=EmbeddingFunc(
                     embedding_dim=384,
                     max_token_size=1000,
                     func=lambda texts: hf_embed(
                         texts,
-                        tokenizer=AutoTokenizer.from_pretrained(EMBEDDING_MODEL),
-                        embed_model=AutoModel.from_pretrained(EMBEDDING_MODEL),
+                        tokenizer=AutoTokenizer.from_pretrained(embedding_model),
+                        embed_model=AutoModel.from_pretrained(embedding_model),
                     ),
                 ),
             )
@@ -171,7 +185,10 @@ def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: s
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
-            print(f"Running real MiniRAG export (working_dir={working_dir}, mode={mode})...")
+            print(
+                "Running real MiniRAG export "
+                f"(working_dir={working_dir}, mode={mode}, llm_model={llm_model})..."
+            )
             for rec in records:
                 question = rec["question"]
                 print(f"  Querying: {question}")
@@ -188,7 +205,11 @@ def run_export(minirag_root: str, working_dir: str, qa_file: str, output_file: s
                         {
                             "source_id": "minirag-retrieval",
                             "text": context_text,
-                            "metadata": {"mode": mode}
+                            "metadata": {
+                                "mode": mode,
+                                "llm_model": llm_model,
+                                "embedding_model": embedding_model,
+                            }
                         }
                     ],
                     "baseline_answer": baseline_answer,
@@ -223,6 +244,13 @@ def main():
     parser.add_argument("--minirag-dir", type=str, default="../external/MiniRAG", help="Path to MiniRAG repo")
     parser.add_argument("--working-dir", type=str, default="../external/MiniRAG/LiHua-World", help="Path to MiniRAG workspace")
     parser.add_argument("--mode", type=str, choices=["naive", "mini"], default="mini", help="MiniRAG query mode (mini, naive)")
+    parser.add_argument("--llm-model", default="qwen3.5:4b", help="Ollama model name for MiniRAG generation.")
+    parser.add_argument("--ollama-host", help="Optional Ollama host URL, e.g. http://127.0.0.1:11434.")
+    parser.add_argument(
+        "--embedding-model",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="Hugging Face embedding model used by MiniRAG.",
+    )
 
     args = parser.parse_args()
 
@@ -238,7 +266,10 @@ def main():
             output_file=args.output,
             dry_run=args.dry_run,
             limit=args.limit,
-            mode=args.mode
+            mode=args.mode,
+            llm_model=args.llm_model,
+            ollama_host=args.ollama_host,
+            embedding_model=args.embedding_model,
         )
         print(f"Export complete. Written {count} items to {args.output}")
     except Exception as e:

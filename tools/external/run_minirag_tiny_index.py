@@ -16,11 +16,19 @@ def main():
     parser.add_argument("--data-dir", type=str, default="experiments/minirag_tiny_sources/data", help="Input data folder")
     parser.add_argument("--working-dir", type=str, default="experiments/minirag_tiny_sources/index", help="Working dir (index output)")
     parser.add_argument("--model", type=str, default="PHI", help="Model name (PHI, GLM, etc)")
+    parser.add_argument("--llm-model", type=str, default="qwen3.5:4b", help="Ollama model name for MiniRAG indexing")
+    parser.add_argument("--ollama-host", type=str, help="Optional Ollama host URL, e.g. http://127.0.0.1:11434")
+    parser.add_argument(
+        "--embedding-model",
+        type=str,
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="Hugging Face embedding model used by MiniRAG",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Don't actually run LLM, just mock it")
 
     args = parser.parse_args()
     
-    minirag_path = setup_minirag_path(args.minirag_dir)
+    setup_minirag_path(args.minirag_dir)
     
     if args.dry_run:
         print("Dry-run mode: Mocking MiniRAG indexing...")
@@ -40,24 +48,27 @@ def main():
         print(f"Error: Could not import MiniRAG. Ensure it is installed and --minirag-dir is correct. {e}")
         sys.exit(1)
 
-    EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-    
     if not os.path.exists(args.working_dir):
         os.makedirs(args.working_dir)
+
+    llm_kwargs = {}
+    if args.ollama_host:
+        llm_kwargs["host"] = args.ollama_host
 
     # Initialize MiniRAG with Ollama
     rag = MiniRAG(
         working_dir=args.working_dir,
         llm_model_func=ollama_model_complete,
         llm_model_max_token_size=2048,
-        llm_model_name="qwen3.5:4b", # Matching ProofRAG model
+        llm_model_name=args.llm_model,
+        llm_model_kwargs=llm_kwargs,
         embedding_func=EmbeddingFunc(
             embedding_dim=384,
             max_token_size=1000,
             func=lambda texts: hf_embed(
                 texts,
-                tokenizer=AutoTokenizer.from_pretrained(EMBEDDING_MODEL),
-                embed_model=AutoModel.from_pretrained(EMBEDDING_MODEL),
+                tokenizer=AutoTokenizer.from_pretrained(args.embedding_model),
+                embed_model=AutoModel.from_pretrained(args.embedding_model),
             ),
         ),
     )

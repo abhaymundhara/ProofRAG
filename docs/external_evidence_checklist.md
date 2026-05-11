@@ -33,6 +33,18 @@ paper or release reviewer.
 2. Generate or obtain a full MiniRAG/LightRAG export in the normalized JSONL
    schema. Use `tools/external/minirag_exporter.py` when running against an
    external MiniRAG checkout.
+
+   ```bash
+   python tools/external/minirag_exporter.py \
+     --minirag-dir path/to/MiniRAG \
+     --working-dir path/to/MiniRAG/LiHua-World \
+     --qa-file path/to/MiniRAG/dataset/LiHua-World/qa/query_set.csv \
+     --output experiments/results/full_minirag_export.jsonl \
+     --mode mini \
+     --llm-model qwen3.5:4b \
+     --ollama-host http://127.0.0.1:11434 \
+     --embedding-model sentence-transformers/all-MiniLM-L6-v2
+   ```
 3. Run ProofRAG over the full export and create comparison artifacts:
 
    ```bash

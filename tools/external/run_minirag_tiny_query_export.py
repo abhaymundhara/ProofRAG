@@ -45,6 +45,20 @@ def parse_args() -> argparse.Namespace:
         default="mini",
         help="MiniRAG query mode.",
     )
+    parser.add_argument(
+        "--llm-model",
+        default="qwen3.5:4b",
+        help="Ollama model name for MiniRAG generation.",
+    )
+    parser.add_argument(
+        "--ollama-host",
+        help="Optional Ollama host URL, e.g. http://127.0.0.1:11434.",
+    )
+    parser.add_argument(
+        "--embedding-model",
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        help="Hugging Face embedding model used by MiniRAG.",
+    )
     parser.add_argument("--limit", type=int, help="Maximum number of questions to export.")
     parser.add_argument(
         "--dry-run",
@@ -64,6 +78,9 @@ def main() -> int:
         dry_run=args.dry_run,
         limit=args.limit,
         mode=args.mode,
+        llm_model=args.llm_model,
+        ollama_host=args.ollama_host,
+        embedding_model=args.embedding_model,
     )
     print(f"Export complete. Written {count} items to {args.output}")
     return 0

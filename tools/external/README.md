@@ -37,7 +37,10 @@ python tools/external/minirag_exporter.py \
   --minirag-dir ../external/MiniRAG \
   --working-dir ../external/MiniRAG/LiHua-World \
   --qa-file ../external/MiniRAG/dataset/LiHua-World/qa/query_set.csv \
-  --output experiments/results/minirag_full_export.jsonl
+  --output experiments/results/minirag_full_export.jsonl \
+  --llm-model qwen3.5:4b \
+  --ollama-host http://127.0.0.1:11434 \
+  --embedding-model sentence-transformers/all-MiniLM-L6-v2
 ```
 
 The resulting file can then be imported or analyzed using `scripts/run_minirag_adapter_demo.py`.
@@ -78,16 +81,29 @@ python scripts/run_minirag_single_smoke_with_model.py \
 
 ### Manual Pipeline Steps
 
-1. **Dry-run real Single-hop smoke export**:
+1. **Build or dry-run the tiny MiniRAG index**:
+   ```bash
+   python tools/external/run_minirag_tiny_index.py \
+     --minirag-dir ../external/MiniRAG \
+     --data-dir experiments/minirag_tiny_sources/data \
+     --working-dir experiments/minirag_tiny_sources/index \
+     --llm-model qwen3.5:4b \
+     --ollama-host http://127.0.0.1:11434 \
+     --embedding-model sentence-transformers/all-MiniLM-L6-v2
+   ```
+
+2. **Dry-run real Single-hop smoke export**:
    ```bash
    python tools/external/run_minirag_tiny_query_export.py \
      --dry-run \
      --qa-file experiments/results/minirag_tiny_single_qa_subset.csv \
      --output experiments/results/minirag_tiny_single_export_dryrun.jsonl \
+     --llm-model qwen3.5:4b \
+     --ollama-host http://127.0.0.1:11434 \
      --limit 2
    ```
 
-2. **ProofRAG over dry-run export with model**:
+3. **ProofRAG over dry-run export with model**:
    ```bash
    python scripts/run_proofrag_over_minirag_with_model.py \
      --input experiments/results/minirag_tiny_single_export_dryrun.jsonl \
@@ -96,5 +112,5 @@ python scripts/run_minirag_single_smoke_with_model.py \
      --ollama-endpoint-mode chat
    ```
 
-3. **Analyze Results**:
+4. **Analyze Results**:
    Compare the baseline (placeholder) with ProofRAG's verified output.

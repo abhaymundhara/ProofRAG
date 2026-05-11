@@ -113,7 +113,10 @@ def test_run_export_missing_index_files(tmp_path, monkeypatch, capsys):
             qa_file=str(qa_file),
             output_file=str(tmp_path / "out.jsonl"),
             dry_run=False,
-            mode="mini"
+            mode="mini",
+            llm_model="qwen3.5:4b",
+            ollama_host="http://127.0.0.1:11434",
+            embedding_model="sentence-transformers/all-MiniLM-L6-v2",
         )
     
     assert exc_info.value.code == 1

@@ -63,6 +63,9 @@ def test_dry_run_csv_export_valid_jsonl(tmp_path):
         sys.executable, "tools/external/minirag_exporter.py",
         "--qa-file", str(csv_file),
         "--output", str(output_file),
+        "--llm-model", "qwen3.5:4b",
+        "--ollama-host", "http://127.0.0.1:11434",
+        "--embedding-model", "sentence-transformers/all-MiniLM-L6-v2",
         "--dry-run"
     ]
     subprocess.run(cmd, check=True)
@@ -104,6 +107,12 @@ def test_tiny_query_export_entrypoint_dry_run(tmp_path):
             str(csv_file),
             "--output",
             str(output_file),
+            "--llm-model",
+            "qwen3.5:4b",
+            "--ollama-host",
+            "http://127.0.0.1:11434",
+            "--embedding-model",
+            "sentence-transformers/all-MiniLM-L6-v2",
             "--dry-run",
         ],
         check=False,
@@ -116,3 +125,39 @@ def test_tiny_query_export_entrypoint_dry_run(tmp_path):
     assert len(rows) == 1
     assert rows[0]["baseline_method"] == "minirag"
     assert rows[0]["retrieved_context"]
+
+
+def test_tiny_index_entrypoint_dry_run_accepts_model_flags(tmp_path):
+    import subprocess
+    import sys
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "source.txt").write_text("LiHua confirmed the appointment.", encoding="utf-8")
+    index_dir = tmp_path / "index"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "tools/external/run_minirag_tiny_index.py",
+            "--minirag-dir",
+            "/tmp/missing-minirag-ok-for-dry-run",
+            "--data-dir",
+            str(data_dir),
+            "--working-dir",
+            str(index_dir),
+            "--llm-model",
+            "qwen3.5:4b",
+            "--ollama-host",
+            "http://127.0.0.1:11434",
+            "--embedding-model",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "--dry-run",
+        ],
+        check=False,
+        text=True,
+        capture_output=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert (index_dir / "mock_index.txt").exists()
