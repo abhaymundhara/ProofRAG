@@ -42,6 +42,20 @@ def clean_model_answer(text: str) -> str:
     return text.strip()
 
 def generate_date_variants(date_str: str) -> list[str]:
+    datetime_match = re.match(r"^(\d{8})[_:-]?(\d{2}):?(\d{2})$", date_str)
+    if datetime_match:
+        date_part, hour, minute = datetime_match.groups()
+        variants = generate_date_variants(date_part)
+        variants.extend(
+            [
+                f"{date_part}_{hour}{minute}",
+                f"{date_part}{hour}{minute}",
+                f"{date_part} {hour}{minute}",
+                f"{date_part} at {hour}{minute}",
+            ]
+        )
+        return variants
+
     if not re.match(r'^\d{8}$', date_str):
         return [date_str]
         
@@ -77,6 +91,8 @@ def generate_date_variants(date_str: str) -> list[str]:
             f"{short} {day_int}",
             f"{full} {day_int}th",
             f"{short} {day_int}th",
+            f"{date_str}_\\d{{2}}:?\\d{{2}}",
+            f"{date_str}\\d{{4}}",
         ])
     return variants
 
@@ -111,7 +127,7 @@ def contains_gold_answer(generated_answer: str, gold_answer: str) -> bool:
     norm_gold = norm_gold.replace("water tap", "water tab")
     
     # 3. Direct substring check
-    if re.match(r'^\d{8}$', norm_gold):
+    if re.match(r'^\d{8}(?:_?\d{4})?$', norm_gold):
         variants = generate_date_variants(norm_gold)
         for var in variants:
             if re.search(rf'\b{var}\b', norm_gen):
@@ -180,7 +196,13 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
                 
                 for v in variations:
                     escaped_v = re.escape(v)
-                    clean_gen = re.sub(rf'\b(?:source|record|id)?\s*\[?{escaped_v}\]?\b', ' ', clean_gen, flags=re.I)
+                    clean_gen = re.sub(
+                        rf'\b(?:source|record|id|record_id)\s*[=:]?\s*\[?{escaped_v}\]?\b',
+                        ' ',
+                        clean_gen,
+                        flags=re.I,
+                    )
+                    clean_gen = re.sub(rf'\[(?:source\s*)?{escaped_v}\]', ' ', clean_gen, flags=re.I)
 
     # 4. Normalized check
     norm_gen = normalize_answer(clean_gen)
@@ -193,7 +215,7 @@ def is_answer_correct(generated_answer: str, gold_answer: str, *, source_ids: li
     norm_gold = norm_gold.replace("water tap", "water tab")
         
     # Special handling for dates (e.g. 20260108) to ensure word boundary
-    if re.match(r'^\d{8}$', norm_gold):
+    if re.match(r'^\d{8}(?:_?\d{4})?$', norm_gold):
         variants = generate_date_variants(norm_gold)
         for var in variants:
             if re.search(rf'\b{var}\b', norm_gen):

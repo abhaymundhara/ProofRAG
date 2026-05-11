@@ -19,6 +19,7 @@ def test_contains_gold_answer():
     assert contains_gold_answer("Tom", "Tom")
     assert contains_gold_answer("The person was Tom Smith.", "Tom")
     assert contains_gold_answer("Tom Smith", "Tom Smith")
+    assert contains_gold_answer("Li Hua asked at 20260206 at 16:00.", "20260206_16:00")
 
 def test_water_tap_typo_normalization():
     # 'water tap in the apartment is broken' should match gold 'water tab in the apartment is broken'
@@ -33,6 +34,9 @@ def test_date_variants_normalization():
     assert is_answer_correct("Jan 8, 2026", "20260108")
     assert is_answer_correct("8 January 2026", "20260108")
     assert is_answer_correct("The event is on 20260108.", "20260108")
+    assert is_answer_correct("The event is on 20260108_11:00.", "20260108")
+    assert is_answer_correct("The event is on 20260108_1100.", "20260108")
+    assert is_answer_correct("The event is on 20260108 at 11:00.", "20260108_11:00")
     assert is_answer_correct("Li Hua plans to celebrate on Jan 18th.", "20260118")
 
 
@@ -60,6 +64,13 @@ def test_source_id_isolation():
     generated2 = "Source 20260108_11:00 says hello."
     assert not is_answer_correct(
         generated2,
+        "20260108",
+        source_ids=["20260108_11:00"],
+    )
+
+    generated2b = "The answer is 20260108_11:00."
+    assert is_answer_correct(
+        generated2b,
         "20260108",
         source_ids=["20260108_11:00"],
     )

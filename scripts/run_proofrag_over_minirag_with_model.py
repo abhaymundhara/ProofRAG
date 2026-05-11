@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
+from proofrag.evaluation.source_coverage import expected_answer_allowed_from_sources
 from proofrag.generation.ollama import OllamaGenerator
 from proofrag.evaluation.answer_metrics import contains_gold_answer, clean_model_answer, is_answer_correct
 from proofrag.evidence.ledger import EvidenceRecord
@@ -70,11 +71,17 @@ def main():
             # Use adapter to process the item (handles contract inference and evidence mapping)
             processed = adapter.process_item(item)
             report_dict = processed["sufficiency_report"]
+            evidence_records = processed["evidence_records"]
+            expected_answer_allowed = expected_answer_allowed_from_sources(
+                gold_supporting_sources=item.gold_supporting_sources,
+                retrieved_context=item.retrieved_context,
+                evidence_records=evidence_records,
+            )
             full_prompt = processed["packed_prompt"]
             if args.strict_verifier_prompt:
                 records = [
                     EvidenceRecord(**record)
-                    for record in processed["evidence_records"]
+                    for record in evidence_records
                 ]
                 ranked_records = rank_evidence_records(
                     item.question,
@@ -129,6 +136,12 @@ def main():
                 "baseline_correct": baseline_correct,
                 "gold_answer": item.gold_answer,
                 "answer_allowed": bool(report_dict["answer_allowed"] and model_called),
+                "expected_answer_allowed": expected_answer_allowed,
+                "heuristic_expected_allowed": expected_answer_allowed,
+                "heuristic_pass": (
+                    bool(report_dict["answer_allowed"] and model_called)
+                    == expected_answer_allowed
+                ),
                 "model_called": model_called,
                 "raw_proofrag_generated_answer": raw_proofrag_answer,
                 "proofrag_generated_answer": proofrag_answer,
@@ -144,7 +157,7 @@ def main():
                     else ["strict_verifier_abstained"]
                 ),
                 "contract_slot_ids": report_dict.get("contract_slot_ids", []),
-                "evidence_record_slots": [r["supports_slots"] for r in processed["evidence_records"]],
+                "evidence_record_slots": [r["supports_slots"] for r in evidence_records],
                 "contradiction_count": report_dict["contradiction_count"]
             }
             results.append(res)

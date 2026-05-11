@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from proofrag.evaluation.answer_metrics import is_answer_correct
 from proofrag.evaluation.minirag_adapter import MiniRAGOutputAdapter
+from proofrag.evaluation.source_coverage import expected_answer_allowed_from_sources
 
 
 class MiniRAGExperimentResult(BaseModel):
@@ -55,24 +56,11 @@ class MiniRAGExperimentRunner:
                 records = adapter_result["evidence_records"]
                 
                 # 2. Heuristic validation
-                retrieved_ids = _retrieved_source_ids(item.retrieved_context, records)
-                gold_ids = set(item.gold_supporting_sources)
-                
-                # Check if all gold sources are retrieved
-                has_all_gold = (
-                    all(
-                        any(_source_ids_match(gold_id, retrieved_id) for retrieved_id in retrieved_ids)
-                        for gold_id in gold_ids
-                    )
-                    if gold_ids
-                    else True
+                heuristic_expected = expected_answer_allowed_from_sources(
+                    gold_supporting_sources=item.gold_supporting_sources,
+                    retrieved_context=item.retrieved_context,
+                    evidence_records=records,
                 )
-                
-                # Check if any retrieved context was marked as contradiction
-                # (Adapter marks it in evidence_records)
-                has_contradiction = any(len(r["contradicts"]) > 0 for r in records)
-                
-                heuristic_expected = has_all_gold and not has_contradiction
                 
                 # Special case: if there's no gold sources but context is empty, it might still fail
                 # But we follow the user's rule: "gold sources in context AND no contradiction -> True"
@@ -169,33 +157,3 @@ class MiniRAGExperimentRunner:
             print(f"{r.id:<20} | {str(r.answer_allowed):<7} | "
                   f"{str(r.heuristic_expected_allowed):<9} | {status}")
         print("-" * 80 + "\n")
-
-
-def _retrieved_source_ids(
-    retrieved_context: list[dict],
-    evidence_records: list[dict],
-) -> set[str]:
-    ids = {str(context.get("source_id", "")) for context in retrieved_context}
-    for record in evidence_records:
-        source_id = str(record.get("source_id", ""))
-        if source_id:
-            ids.add(source_id)
-            if "#src" in source_id:
-                ids.add(source_id.rsplit("#src", 1)[-1])
-    return {source_id for source_id in ids if source_id}
-
-
-def _source_ids_match(left: str, right: str) -> bool:
-    return _source_id_variants(left) & _source_id_variants(right) != set()
-
-
-def _source_id_variants(source_id: str) -> set[str]:
-    text = str(source_id).strip()
-    compact = text.replace(":", "").replace("_", "").replace("-", "")
-    return {
-        text,
-        text.replace(":", ""),
-        text.replace(":", "_"),
-        text.replace(":", "-"),
-        compact,
-    }
