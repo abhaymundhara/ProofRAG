@@ -39,6 +39,11 @@ def main():
         default=10,
         help="Maximum evidence records included when --strict-verifier-prompt is set.",
     )
+    parser.add_argument(
+        "--concise-answer-prompt",
+        action="store_true",
+        help="Append instructions that request a short answer and minimal citations.",
+    )
 
     args = parser.parse_args()
 
@@ -93,6 +98,8 @@ def main():
                     question=item.question,
                     records=ranked_records,
                 )
+            elif args.concise_answer_prompt:
+                full_prompt = _append_concise_answer_policy(full_prompt)
             
             model_called = False
             raw_proofrag_answer = ""
@@ -168,6 +175,25 @@ def main():
             f.write(json.dumps(res) + "\n")
 
     print(f"\nDone. Results written to {args.output}")
+
+
+def _append_concise_answer_policy(prompt: str) -> str:
+    return "\n".join(
+        [
+            prompt,
+            "",
+            "## CONCISE ANSWER FORMAT",
+            (
+                "Return only the final answer in one short sentence. "
+                "Do not include analysis, timelines, or bullet points."
+            ),
+            (
+                "Then add one citation sentence with only the supporting "
+                "[record_id] values. If evidence is incomplete, say "
+                '"Insufficient evidence."'
+            ),
+        ]
+    )
 
 
 if __name__ == "__main__":
