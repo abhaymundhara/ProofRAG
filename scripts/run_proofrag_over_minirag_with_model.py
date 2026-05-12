@@ -50,7 +50,21 @@ def main():
         "--max-evidence-records",
         type=int,
         default=10,
-        help="Maximum evidence records included when --strict-verifier-prompt is set.",
+        help=(
+            "Maximum evidence records included when --strict-verifier-prompt, "
+            "--compact-answer-prompt, or --budgeted-packed-prompt is set."
+        ),
+    )
+    parser.add_argument(
+        "--max-record-chars",
+        type=int,
+        default=1200,
+        help="Maximum characters per evidence record for budgeted packed prompts.",
+    )
+    parser.add_argument(
+        "--budgeted-packed-prompt",
+        action="store_true",
+        help="Use the standard packed prompt but cap supporting evidence records.",
     )
     parser.add_argument(
         "--concise-answer-prompt",
@@ -131,6 +145,17 @@ def main():
                         question=item.question,
                         records=ranked_records,
                     )
+            elif args.budgeted_packed_prompt:
+                full_prompt = adapter.packer.pack(
+                    question=item.question,
+                    contract=processed["contract"],
+                    ledger=processed["ledger"],
+                    report=processed["sufficiency_report_obj"],
+                    max_supporting_records=args.max_evidence_records,
+                    max_record_chars=args.max_record_chars,
+                )
+                if args.concise_answer_prompt:
+                    full_prompt = _append_concise_answer_policy(full_prompt)
             elif args.concise_answer_prompt:
                 full_prompt = _append_concise_answer_policy(full_prompt)
             

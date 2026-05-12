@@ -30,6 +30,9 @@ class StrictContextPacker:
         contract: EvidenceContract,
         ledger: EvidenceLedger,
         report: SufficiencyReport,
+        *,
+        max_supporting_records: int | None = None,
+        max_record_chars: int | None = None,
     ) -> str:
         """Build and return the final prompt string.
 
@@ -77,8 +80,13 @@ class StrictContextPacker:
             rec for rec in ledger.records 
             if any(s in required_slot_ids for s in rec.supports_slots)
         ]
-        if supporting_records:
-            for rec in supporting_records:
+        displayed_records = supporting_records
+        omitted_records = 0
+        if max_supporting_records is not None and max_supporting_records >= 0:
+            displayed_records = supporting_records[:max_supporting_records]
+            omitted_records = max(0, len(supporting_records) - len(displayed_records))
+        if displayed_records:
+            for rec in displayed_records:
                 slots_label = ", ".join(rec.supports_slots)
                 lines.append(
                     f"  [record_id={rec.record_id}] "
@@ -87,8 +95,13 @@ class StrictContextPacker:
                     f"[confidence={rec.confidence:.2f}] "
                     f"[slots={slots_label}]"
                 )
-                lines.append(f"  \"{rec.text}\"")
+                lines.append(f"  \"{_truncate_record_text(rec.text, max_record_chars)}\"")
                 lines.append("")
+            if omitted_records:
+                lines.append(
+                    f"  ({omitted_records} lower-ranked supporting records omitted "
+                    "by prompt budget)"
+                )
         else:
             lines.append("  (no supporting evidence found)")
 
@@ -160,3 +173,9 @@ class StrictContextPacker:
         )
 
         return "\n".join(lines)
+
+
+def _truncate_record_text(text: str, max_chars: int | None) -> str:
+    if max_chars is None or max_chars < 1 or len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + "..."

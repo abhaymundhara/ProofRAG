@@ -202,3 +202,47 @@ class TestStrictContextPacker:
 
         assert "mismatch explicitly" in prompt.lower()
         assert "unsupported labels" in prompt.lower()
+
+    def test_pack_can_budget_supporting_records_and_text(self):
+        contract = _make_contract()
+        ledger = EvidenceLedger(
+            records=[
+                EvidenceRecord(
+                    record_id="r1",
+                    source_id="doc-001",
+                    text="Tom asked LiHua about the laptop warranty issue.",
+                    supports_slots=["who_asked"],
+                    confidence=0.9,
+                ),
+                EvidenceRecord(
+                    record_id="r2",
+                    source_id="doc-002",
+                    text="The warranty expires in December 2025.",
+                    supports_slots=["warranty_context"],
+                    confidence=0.8,
+                ),
+                EvidenceRecord(
+                    record_id="r3",
+                    source_id="doc-003",
+                    text="Extra supporting context that should be omitted.",
+                    supports_slots=["warranty_context"],
+                    confidence=0.7,
+                ),
+            ]
+        )
+        report = scorer.score(contract, ledger)
+
+        prompt = packer.pack(
+            _QUESTION,
+            contract,
+            ledger,
+            report,
+            max_supporting_records=2,
+            max_record_chars=12,
+        )
+
+        assert "r1" in prompt
+        assert "r2" in prompt
+        assert "r3" not in prompt
+        assert "omitted by prompt budget" in prompt
+        assert "Tom asked Li..." in prompt
