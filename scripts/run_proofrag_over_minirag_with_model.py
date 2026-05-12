@@ -12,6 +12,7 @@ from proofrag.generation.ollama import OllamaGenerator
 from proofrag.evaluation.answer_metrics import contains_gold_answer, clean_model_answer, is_answer_correct
 from proofrag.evidence.ledger import EvidenceRecord
 from proofrag.generation.strict_verifier import (
+    build_compact_answer_prompt,
     build_strict_verifier_prompt,
     is_strict_abstention,
     is_uncertainty_abstention,
@@ -43,6 +44,11 @@ def main():
         "--concise-answer-prompt",
         action="store_true",
         help="Append instructions that request a short answer and minimal citations.",
+    )
+    parser.add_argument(
+        "--compact-answer-prompt",
+        action="store_true",
+        help="Use a compact ranked-evidence answer prompt without strict verifier rules.",
     )
 
     args = parser.parse_args()
@@ -84,7 +90,7 @@ def main():
                 evidence_records=evidence_records,
             )
             full_prompt = processed["packed_prompt"]
-            if args.strict_verifier_prompt:
+            if args.strict_verifier_prompt or args.compact_answer_prompt:
                 records = [
                     EvidenceRecord(**record)
                     for record in evidence_records
@@ -94,10 +100,16 @@ def main():
                     records,
                     limit=args.max_evidence_records,
                 )
-                full_prompt = build_strict_verifier_prompt(
-                    question=item.question,
-                    records=ranked_records,
-                )
+                if args.strict_verifier_prompt:
+                    full_prompt = build_strict_verifier_prompt(
+                        question=item.question,
+                        records=ranked_records,
+                    )
+                else:
+                    full_prompt = build_compact_answer_prompt(
+                        question=item.question,
+                        records=ranked_records,
+                    )
             elif args.concise_answer_prompt:
                 full_prompt = _append_concise_answer_policy(full_prompt)
             

@@ -1,5 +1,6 @@
 from proofrag.evidence.ledger import EvidenceRecord
 from proofrag.generation.strict_verifier import (
+    build_compact_answer_prompt,
     build_strict_verifier_prompt,
     is_strict_abstention,
     is_uncertainty_abstention,
@@ -40,6 +41,35 @@ def test_rank_evidence_records_prefers_query_terms_and_phrases():
     )
 
     assert [record.record_id for record in ranked] == ["target"]
+
+
+def test_rank_evidence_records_expands_fitness_terms():
+    records = [
+        _record("blog", "Li Hua helped structure a blog post with SEO ideas."),
+        _record(
+            "workout",
+            "WolfgangSchulz admired Li Hua's good body shape and asked about a workout.",
+        ),
+    ]
+
+    ranked = rank_evidence_records(
+        "Did Li Hua discuss his progress with the fitness plan before the blog post?",
+        records,
+        limit=1,
+    )
+
+    assert [record.record_id for record in ranked] == ["workout"]
+
+
+def test_build_compact_answer_prompt_uses_source_ids():
+    prompt = build_compact_answer_prompt(
+        question="Did Li Hua ask Adam about repairs?",
+        records=[_record("20260108_11:00", "LiHua asked Adam about repairs.")],
+    )
+
+    assert "one short sentence" in prompt
+    assert "[20260108_11:00]" in prompt
+    assert "strict evidence verifier" not in prompt
 
 
 def test_build_strict_verifier_prompt_separates_question_types():

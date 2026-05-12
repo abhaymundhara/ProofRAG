@@ -51,6 +51,24 @@ _YES_NO_STARTERS = {
     "were",
 }
 
+_QUESTION_EXPANSIONS = {
+    "achievement": ("progress", "improvement", "success", "stronger"),
+    "achievements": ("progress", "improvement", "success", "stronger"),
+    "fitness": (
+        "body",
+        "shape",
+        "exercise",
+        "figure",
+        "gym",
+        "training",
+        "workout",
+        "stronger",
+    ),
+    "healthy": ("health", "exercise", "fitness", "training", "workout"),
+    "plan": ("schedule", "routine", "training"),
+    "progress": ("improvement", "stronger", "training"),
+}
+
 
 def question_kind(question: str) -> str:
     """Return the strict verifier question kind."""
@@ -119,6 +137,33 @@ def build_strict_verifier_prompt(
     )
 
 
+def build_compact_answer_prompt(
+    *,
+    question: str,
+    records: list[EvidenceRecord],
+) -> str:
+    """Build a compact answer prompt over ranked evidence for small models."""
+
+    evidence = "\n\n".join(
+        f"[{record.source_id}]\n{record.text}" for record in records
+    )
+    return "\n".join(
+        [
+            "Answer the question using only the evidence snippets below.",
+            'If the evidence is incomplete, answer exactly "Insufficient evidence."',
+            "Keep the answer to one short sentence.",
+            "Then add one citation sentence with only the supporting [source] ids.",
+            "",
+            f"Question: {question}",
+            "",
+            "Evidence:",
+            evidence,
+            "",
+            "Answer:",
+        ]
+    )
+
+
 def is_strict_abstention(answer: str) -> bool:
     """Return True when the verifier declined to answer."""
 
@@ -161,8 +206,12 @@ def _record_relevance(question: str, record: EvidenceRecord) -> int:
 
 
 def _question_terms(question: str) -> list[str]:
-    return [
+    terms = [
         term.lower()
         for term in re.findall(r"\w+", question)
         if len(term) > 3 and term.lower() not in _QUESTION_STOPWORDS
     ]
+    expanded = list(terms)
+    for term in terms:
+        expanded.extend(_QUESTION_EXPANSIONS.get(term, ()))
+    return expanded

@@ -33,6 +33,24 @@ _STOPWORDS = {
     "with",
 }
 
+_QUERY_EXPANSIONS = {
+    "achievement": ("progress", "improvement", "success", "stronger"),
+    "achievements": ("progress", "improvement", "success", "stronger"),
+    "fitness": (
+        "body",
+        "shape",
+        "exercise",
+        "figure",
+        "gym",
+        "training",
+        "workout",
+        "stronger",
+    ),
+    "healthy": ("health", "exercise", "fitness", "training", "workout"),
+    "plan": ("schedule", "routine", "training"),
+    "progress": ("improvement", "stronger", "training"),
+}
+
 
 @dataclass(frozen=True)
 class LiHuaSourceDocument:
@@ -125,7 +143,7 @@ class _BM25Ranker:
             self.document_frequency.update(set(document.tokens))
 
     def rank(self, question: str) -> list[tuple[float, LiHuaSourceDocument]]:
-        query_tokens = _tokens(question)
+        query_tokens = _expanded_query_tokens(question)
         ranked: list[tuple[float, LiHuaSourceDocument]] = []
         for document in self.documents:
             score = self._score(query_tokens, document)
@@ -176,3 +194,11 @@ def _tokens(text: str) -> list[str]:
         for token in re.findall(r"[a-z0-9]+", text.lower())
         if len(token) > 2 and token not in _STOPWORDS
     ]
+
+
+def _expanded_query_tokens(text: str) -> list[str]:
+    tokens = _tokens(text)
+    expanded = list(tokens)
+    for token in tokens:
+        expanded.extend(_QUERY_EXPANSIONS.get(token, ()))
+    return expanded
