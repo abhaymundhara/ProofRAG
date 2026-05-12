@@ -16,6 +16,7 @@ from proofrag.generation.strict_verifier import (
     build_strict_verifier_prompt,
     is_strict_abstention,
     is_uncertainty_abstention,
+    question_kind,
     rank_evidence_records,
 )
 
@@ -155,9 +156,15 @@ def main():
                     max_record_chars=args.max_record_chars,
                 )
                 if args.concise_answer_prompt:
-                    full_prompt = _append_concise_answer_policy(full_prompt)
+                    full_prompt = _append_concise_answer_policy(
+                        full_prompt,
+                        question=item.question,
+                    )
             elif args.concise_answer_prompt:
-                full_prompt = _append_concise_answer_policy(full_prompt)
+                full_prompt = _append_concise_answer_policy(
+                    full_prompt,
+                    question=item.question,
+                )
             
             model_called = False
             raw_proofrag_answer = ""
@@ -236,12 +243,20 @@ def main():
     print(f"\nDone. Results written to {args.output}")
 
 
-def _append_concise_answer_policy(prompt: str) -> str:
+def _append_concise_answer_policy(prompt: str, *, question: str | None = None) -> str:
+    kind = question_kind(question or "")
+    shape_rule = (
+        'For yes/no questions, start with exactly "Yes," or "No," and make '
+        "the rest of the sentence consistent with that label."
+        if kind == "yesno"
+        else "For factual questions, do not answer Yes or No; return the requested fact."
+    )
     return "\n".join(
         [
             prompt,
             "",
             "## CONCISE ANSWER FORMAT",
+            shape_rule,
             (
                 "Return only the final answer in one short sentence. "
                 "Do not include analysis, timelines, or bullet points."
