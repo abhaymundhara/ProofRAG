@@ -41,6 +41,74 @@ def test_claim_level_faithfulness_scores_supported_claims():
     assert report.unsupported_claim_count == 1
 
 
+def test_claim_level_faithfulness_ignores_citation_lines():
+    assert extract_claims(
+        "Tom asked LiHua.\nCitations: [record_id=minirag-q1-0-srcdoc-001]"
+    ) == ["Tom asked LiHua"]
+
+
+def test_claim_level_faithfulness_treats_abstention_as_claim_free():
+    report = claim_level_faithfulness(
+        answer="ABSTAINED: insufficient evidence",
+        evidence_texts=["Tom asked LiHua about the warranty."],
+    )
+
+    assert report.claims == []
+    assert report.groundedness == 1.0
+    assert report.unsupported_claim_count == 0
+
+
+def test_claim_level_faithfulness_supports_multi_evidence_claims():
+    report = claim_level_faithfulness(
+        answer=(
+            "Yes, Adam Smith sent Li Hua a maintenance schedule message before "
+            "the administrators announced a temporary construction schedule "
+            "change due to weather conditions."
+        ),
+        evidence_texts=[
+            (
+                "Time: 20260121_10:00\nAdamSmith: Hi Li Hua! Just wanted to "
+                "let you know that there will be some maintenance work in the "
+                "building soon."
+            ),
+            (
+                "Time: 20260701_10:00\nAdministrators announced a temporary "
+                "change in the construction schedule due to weather conditions."
+            ),
+        ],
+    )
+
+    assert report.groundedness == 1.0
+    assert report.claims[0].supporting_evidence_indices == [0, 1]
+
+
+def test_claim_level_faithfulness_keeps_negated_claims_strict():
+    report = claim_level_faithfulness(
+        answer="The record does not state that Tom asked LiHua.",
+        evidence_texts=["Tom asked LiHua about the warranty."],
+    )
+
+    assert report.groundedness == 0.0
+    assert report.unsupported_claim_count == 1
+
+
+def test_claim_level_faithfulness_matches_compound_names_and_inflections():
+    report = claim_level_faithfulness(
+        answer=(
+            "Turalyon announced construction updates after Illidan Stormrage "
+            "complained about construction noise and requested resident feedback."
+        ),
+        evidence_texts=[
+            (
+                "IllidanStormrage complained about the construction noise, and "
+                "Turalyon asked residents to share feedback on construction updates."
+            )
+        ],
+    )
+
+    assert report.groundedness == 1.0
+
+
 def test_llm_judge_faithfulness_parser():
     response = json.dumps(
         {
@@ -67,4 +135,3 @@ def test_llm_judge_faithfulness_parser():
 
     assert report.groundedness == 0.5
     assert report.claims[0].supporting_evidence_indices == [0]
-

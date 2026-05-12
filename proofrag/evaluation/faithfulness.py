@@ -29,6 +29,50 @@ class FaithfulnessReport(BaseModel):
     unsupported_claim_count: int
 
 
+_STOPWORDS = {
+    "about",
+    "after",
+    "also",
+    "and",
+    "are",
+    "because",
+    "before",
+    "but",
+    "can",
+    "cannot",
+    "could",
+    "did",
+    "does",
+    "for",
+    "from",
+    "had",
+    "has",
+    "have",
+    "here",
+    "hua",
+    "into",
+    "its",
+    "let",
+    "li",
+    "not",
+    "that",
+    "the",
+    "there",
+    "this",
+    "through",
+    "was",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "with",
+    "would",
+    "yes",
+}
+
+
 def extract_claims(answer: str) -> list[str]:
     """Extract simple sentence-level claims from an answer."""
 
@@ -36,7 +80,12 @@ def extract_claims(answer: str) -> list[str]:
     if not cleaned:
         return []
     parts = re.split(r"(?<=[.!?])\s+|\n+", cleaned)
-    return [part.strip(" .!?") for part in parts if part.strip(" .!?")]
+    claims = [part.strip(" .!?") for part in parts if part.strip(" .!?")]
+    return [
+        claim
+        for claim in claims
+        if not _is_citation_only_claim(claim) and not _is_abstention_claim(claim)
+    ]
 
 
 def claim_level_faithfulness(
@@ -47,6 +96,13 @@ def claim_level_faithfulness(
     """Score whether answer claims are supported by evidence snippets."""
 
     claims = extract_claims(answer)
+    if not claims and _is_abstention_claim(answer):
+        return FaithfulnessReport(
+            claims=[],
+            groundedness=1.0,
+            unsupported_claim_count=0,
+        )
+
     supports: list[ClaimSupport] = []
     for claim in claims:
         supporting_indices = [
@@ -54,6 +110,10 @@ def claim_level_faithfulness(
             for index, evidence in enumerate(evidence_texts)
             if _claim_supported_by_text(claim, evidence)
         ]
+        if not supporting_indices and _claim_supported_by_evidence_set(
+            claim, evidence_texts
+        ):
+            supporting_indices = _overlapping_evidence_indices(claim, evidence_texts)
         supports.append(
             ClaimSupport(
                 claim=claim,
@@ -105,13 +165,113 @@ def _claim_supported_by_text(claim: str, evidence: str) -> bool:
         return False
     if normalized_claim in normalized_evidence:
         return True
-    claim_terms = {
-        term for term in normalized_claim.split() if len(term) > 3
-    }
+    if _is_negated(normalized_claim) and not _is_negated(normalized_evidence):
+        return False
+    claim_terms = _meaningful_terms(normalized_claim)
     if not claim_terms:
         return False
-    overlap = sum(1 for term in claim_terms if term in normalized_evidence)
+    evidence_terms = set(normalized_evidence.split())
+    overlap = sum(1 for term in claim_terms if _term_supported(term, evidence_terms))
     return overlap / len(claim_terms) >= 0.8
+
+
+def _claim_supported_by_evidence_set(claim: str, evidence_texts: list[str]) -> bool:
+    normalized_claim = normalize_answer(claim)
+    normalized_evidence = normalize_answer(" ".join(evidence_texts))
+    if not normalized_claim or not normalized_evidence:
+        return False
+    if _is_negated(normalized_claim) and not _is_negated(normalized_evidence):
+        return False
+    claim_terms = _meaningful_terms(normalized_claim)
+    if not claim_terms:
+        return False
+    evidence_terms = set(normalized_evidence.split())
+    overlap = sum(1 for term in claim_terms if _term_supported(term, evidence_terms))
+    return overlap / len(claim_terms) >= 0.65
+
+
+def _overlapping_evidence_indices(claim: str, evidence_texts: list[str]) -> list[int]:
+    claim_terms = _meaningful_terms(normalize_answer(claim))
+    if not claim_terms:
+        return []
+    indices: list[int] = []
+    for index, evidence in enumerate(evidence_texts):
+        evidence_terms = set(normalize_answer(evidence).split())
+        if any(_term_supported(term, evidence_terms) for term in claim_terms):
+            indices.append(index)
+    return indices
+
+
+def _meaningful_terms(normalized_text: str) -> set[str]:
+    return {
+        _stem_term(term)
+        for term in normalized_text.split()
+        if len(term) > 3 and term not in _STOPWORDS and not term.startswith("record_id")
+    }
+
+
+def _term_supported(term: str, evidence_terms: set[str]) -> bool:
+    if term in evidence_terms:
+        return True
+    variants = _term_variants(term)
+    if variants & evidence_terms:
+        return True
+    return any(len(term) > 5 and term in evidence_term for evidence_term in evidence_terms)
+
+
+def _term_variants(term: str) -> set[str]:
+    return {
+        term,
+        f"{term}s",
+        f"{term}ed",
+        f"{term}ing",
+    }
+
+
+def _stem_term(term: str) -> str:
+    for suffix in ("ing", "ed", "s"):
+        if len(term) > len(suffix) + 4 and term.endswith(suffix):
+            return term[: -len(suffix)]
+    return term
+
+
+def _is_citation_only_claim(claim: str) -> bool:
+    normalized = normalize_answer(claim)
+    if not normalized:
+        return True
+    if normalized.startswith(("citation", "citations", "sources", "source")):
+        return True
+    terms = normalized.split()
+    return bool(terms) and all(
+        term.startswith("record_id") or re.fullmatch(r"\d+", term) for term in terms
+    )
+
+
+def _is_abstention_claim(claim: str) -> bool:
+    normalized = normalize_answer(claim)
+    return any(
+        pattern in normalized
+        for pattern in (
+            "abstained insufficient evidence",
+            "insufficient evidence",
+            "not enough information",
+            "cannot be determined",
+            "cannot determine",
+            "cannot be confirmed",
+            "no evidence",
+            "no information",
+            "no record",
+        )
+    )
+
+
+def _is_negated(normalized_text: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(no|not|cannot|cant|couldnt|didnt|doesnt|dont|isnt|wasnt|without)\b",
+            normalized_text,
+        )
+    )
 
 
 def _extract_json_object(raw: str) -> str:
@@ -125,4 +285,3 @@ def _extract_json_object(raw: str) -> str:
     if not match:
         raise ValueError("No JSON object found in judge output")
     return match.group(0)
-
