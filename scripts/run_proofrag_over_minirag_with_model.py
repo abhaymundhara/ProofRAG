@@ -37,6 +37,11 @@ def main():
         help="Append to an existing output file and skip completed row IDs.",
     )
     parser.add_argument(
+        "--retry-errors",
+        action="store_true",
+        help="When resuming, remove prior ERROR rows and rerun those IDs.",
+    )
+    parser.add_argument(
         "--strict-verifier-prompt",
         action="store_true",
         help="Use compact strict verifier prompts with ranked evidence snippets.",
@@ -84,6 +89,8 @@ def main():
     results = []
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.resume and args.retry_errors:
+        _drop_error_rows(output_path)
     completed_ids = _load_completed_ids(output_path) if args.resume else set()
     output_mode = "a" if args.resume else "w"
 
@@ -239,6 +246,25 @@ def _load_completed_ids(path: Path) -> set[str]:
             if row_id:
                 completed.add(row_id)
     return completed
+
+
+def _drop_error_rows(path: Path) -> None:
+    if not path.exists():
+        return
+    rows_to_keep: list[str] = []
+    with path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            answer = str(row.get("proofrag_generated_answer", ""))
+            if answer.startswith("ERROR:"):
+                continue
+            rows_to_keep.append(json.dumps(row) + "\n")
+    path.write_text("".join(rows_to_keep), encoding="utf-8")
 
 
 if __name__ == "__main__":
