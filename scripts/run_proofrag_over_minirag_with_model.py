@@ -29,6 +29,13 @@ def main():
     parser.add_argument("--limit", type=int, help="Limit number of examples")
     parser.add_argument("--respect-sufficiency", type=bool, default=True, help="Abstain if sufficiency fails")
     parser.add_argument("--ollama-endpoint-mode", type=str, choices=["chat", "generate"], default="chat", help="Ollama API endpoint")
+    parser.add_argument("--ollama-timeout", type=int, default=120, help="Ollama request timeout in seconds.")
+    parser.add_argument("--max-tokens", type=int, default=256, help="Maximum tokens to generate per model call.")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Append to an existing output file and skip completed row IDs.",
+    )
     parser.add_argument(
         "--strict-verifier-prompt",
         action="store_true",
@@ -69,15 +76,22 @@ def main():
     generator = OllamaGenerator(
         model=args.model,
         base_url=args.base_url,
+        timeout=args.ollama_timeout,
+        max_tokens=args.max_tokens,
         endpoint_mode=args.ollama_endpoint_mode
     )
 
     results = []
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    completed_ids = _load_completed_ids(output_path) if args.resume else set()
+    output_mode = "a" if args.resume else "w"
 
-    with open(output_path, "w", encoding="utf-8") as f:
+    with open(output_path, output_mode, encoding="utf-8") as f:
         for item in items:
+            if item.id in completed_ids:
+                print(f"Skipping completed query {item.id}...")
+                continue
             print(f"Processing query {item.id}...")
             
             # Use adapter to process the item (handles contract inference and evidence mapping)
@@ -185,6 +199,7 @@ def main():
             }
             results.append(res)
             f.write(json.dumps(res) + "\n")
+            f.flush()
 
     print(f"\nDone. Results written to {args.output}")
 
@@ -206,6 +221,24 @@ def _append_concise_answer_policy(prompt: str) -> str:
             ),
         ]
     )
+
+
+def _load_completed_ids(path: Path) -> set[str]:
+    completed: set[str] = set()
+    if not path.exists():
+        return completed
+    with path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            row_id = str(row.get("id", "")).strip()
+            if row_id:
+                completed.add(row_id)
+    return completed
 
 
 if __name__ == "__main__":
